@@ -49,7 +49,7 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
   let ItemComponent;
   onDestroy(state.subscribe('config.components.ChartTimelineItemsRowItem', (value) => (ItemComponent = value)));
 
-  let itemsPath = `$data.flatTreeMapById.${props.row.id}.$data.items`;
+  let itemsPath = `config.list.rows.${props.row.id}.$data.items`;
   let rowSub, itemsSub;
   let classNameCurrent = '';
 
@@ -87,19 +87,20 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
       updateDom();
       update();
     });
-    itemsSub = state.subscribe(
-      itemsPath,
-      (value) => {
+    itemsSub = state.subscribeAll(
+      [itemsPath, 'config.chart.items'],
+      () => {
+        const value = state.get(itemsPath);
         if (value === undefined) {
           shouldDetach = true;
-          reuseComponents(itemComponents, [], (item) => ({ row, item }), ItemComponent);
+          reuseComponents(itemComponents, [], () => null, ItemComponent, false);
           return update();
         }
-        reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent);
+        reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent, false);
         updateDom();
         update();
       },
-      { ignore: [`${itemsPath}.$data.detached`] }
+      { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }
     );
   }
 
@@ -112,10 +113,10 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
     })
   );
 
-  onChange((changedProps: Props, options) => {
+  onChange(function onPropsChange(changedProps: Props, options) {
     if (options.leave || changedProps.row === undefined) {
       shouldDetach = true;
-      reuseComponents(itemComponents, [], (item) => ({ row: undefined, item }), ItemComponent, false);
+      reuseComponents(itemComponents, [], (item) => ({ row: undefined, item: undefined }), ItemComponent, false);
       return update();
     }
     props = changedProps;
@@ -141,8 +142,8 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
 
   const actions = Actions.create(componentActions, actionProps);
 
-  return (templateProps) => {
-    return wrapper(
+  return (templateProps) =>
+    wrapper(
       html`
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
           ${itemComponents.map((i) => i.html())}
@@ -150,5 +151,4 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
       `,
       { props, vido, templateProps }
     );
-  };
 }

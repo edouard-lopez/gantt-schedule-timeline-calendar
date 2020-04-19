@@ -1,15 +1,17 @@
 import { Time } from './time';
 import DeepState from 'deep-state-observer';
 import dayjs from 'dayjs';
-import { Config, DataChartTime, ScrollTypeHorizontal, Row, Item, Vido, ScrollTypeVertical } from '../gstc';
+import { Config, DataChartTime, ScrollTypeHorizontal, Row, Item, Vido, Items, ScrollTypeVertical, Rows } from '../gstc';
 export declare function getClass(name: string): string;
 export declare function prepareState(userConfig: Config): {
     config: any;
 };
 export declare function stateFromConfig(userConfig: Config): any;
+export declare function stateFromConfigExperimental(userConfig: Config): Promise<any>;
 export declare const publicApi: {
     name: string;
     stateFromConfig: typeof stateFromConfig;
+    stateFromConfigExperimental: typeof stateFromConfigExperimental;
     merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
     date(time: any): dayjs.Dayjs;
     setPeriod(period: dayjs.OpUnitType): number;
@@ -41,8 +43,8 @@ export declare class Api {
     allActions: any[];
     getActions(name: string): any;
     isItemInViewport(item: Item, leftGlobal: number, rightGlobal: number): boolean;
-    prepareItems(items: Item[]): Item[];
-    fillEmptyRowValues(rows: Row[]): Row[];
+    prepareItems(items: Items): Items;
+    fillEmptyRowValues(rows: Rows): Rows;
     itemsOnTheSameLevel(item1: Item, item2: Item): boolean;
     itemsOverlaps(item1: Item, item2: Item): boolean;
     itemOverlapsWithOthers(item: Item, items: Item[]): boolean;
@@ -52,12 +54,8 @@ export declare class Api {
     recalculateRowsPercents(rows: Row[], verticalAreaHeight: number): Row[];
     generateParents(rows: any, parentName?: string): {};
     fastTree(rowParents: any, node: any, parents?: any[]): any;
-    makeTreeMap(rows: any, items: any): any;
-    getFlatTreeMapById(treeMap: any, flatTreeMapById?: {}): {};
-    flattenTreeMap(treeMap: any, rows?: any[]): any[];
-    getRowsFromMap(flatTreeMap: any, rows: any): any;
-    getRowsFromIds(ids: any, rows: any): any[];
-    getRowsWithParentsExpanded(flatTreeMap: any, flatTreeMapById: any, rows: any): any[];
+    makeTreeMap(rows: Rows, items: Items): any;
+    getRowsWithParentsExpanded(rows: Rows): any[];
     getVisibleRows(rowsWithParentsExpanded: Row[]): Row[];
     normalizeMouseWheelEvent(event: MouseWheelEvent): WheelResult;
     scrollToTime(toTime: number, centered?: boolean, time?: DataChartTime): number;

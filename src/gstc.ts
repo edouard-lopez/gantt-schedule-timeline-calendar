@@ -9,10 +9,8 @@
 
 import 'pepjs';
 import Vido from '@neuronet.io/vido/vido';
-//import Vido from '../../vido/vido';
-import { publicApi, Api } from './api/api';
-
 import { vido, lithtml, ComponentInstance } from '@neuronet.io/vido/vido.d';
+import { publicApi, Api } from './api/api';
 import { Dayjs, OpUnitType } from 'dayjs';
 import { Properties as CSSProps } from 'csstype';
 import DeepState from 'deep-state-observer';
@@ -573,8 +571,6 @@ export interface DataElements {
 
 export interface Data {
   treeMap: TreeMap;
-  flatTreeMap: string[];
-  flatTreeMapById: Rows;
   list: DataList;
   dimensions: Dimensions;
   chart: DataChart;
@@ -606,8 +602,6 @@ export interface GSTCResult {
 function getDefaultData(): Data {
   return {
     treeMap: { id: '', $data: { children: [], parents: [], items: [] } },
-    flatTreeMap: [],
-    flatTreeMapById: {},
     list: {
       visibleRows: [],
       visibleRowsHeight: 0,

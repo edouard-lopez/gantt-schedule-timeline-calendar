@@ -45,9 +45,8 @@ export default function ChartTimelineItems(vido: Vido, props = {}) {
   }
   onDestroy(
     state.subscribeAll(
-      ['$data.list.visibleRows;', 'config.components.ChartTimelineItemsRow', 'config.chart.items'],
-      createRowComponents,
-      { ignore: ['config.chart.items.*.$data.detached'] }
+      ['$data.list.visibleRows;', 'config.components.ChartTimelineItemsRow', 'config.chart.items.*.rowId'],
+      createRowComponents
     )
   );
   onDestroy(() => {

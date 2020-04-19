@@ -46,6 +46,7 @@ export interface PluginData extends Options {
     moving: Item[];
     initialItems: Item[];
     movement: Movement;
+    lastMovement: Point;
     position: Point;
     pointerState: 'up' | 'down' | 'move';
     state: State;

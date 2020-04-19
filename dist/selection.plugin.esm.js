@@ -75,7 +75,7 @@ class SelectionPlugin {
         // watch and update items that are inside selection
         this.unsub.push(this.state.subscribe('config.chart.items', (items) => {
             this.data.selected[ITEM] = this.data.selected[ITEM].map((item) => items[item.id]);
-        }));
+        }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
         // TODO: watch and update cells that are inside selection
     }
     setWrapper() {

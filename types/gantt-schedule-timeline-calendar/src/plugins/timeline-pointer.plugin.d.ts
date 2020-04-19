@@ -1,4 +1,3 @@
-import { Vido } from '../gstc';
 export declare const CELL = "chart-timeline-grid-row-cell";
 export declare type CELL_TYPE = 'chart-timeline-grid-row-cell';
 export declare const ITEM = "chart-timeline-items-row-item";
@@ -27,5 +26,5 @@ export interface PluginData {
 }
 export declare function Plugin(options?: {
     enabled: boolean;
-}): (vidoInstance: Vido) => () => void;
+}): (vidoInstance: any) => () => void;
 //# sourceMappingURL=timeline-pointer.plugin.d.ts.map

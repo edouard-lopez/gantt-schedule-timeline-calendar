@@ -257,7 +257,7 @@ function gemerateEmptyPluginData(options) {
     return Object.assign({ moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
             px: { horizontal: 0, vertical: 0 },
             time: 0,
-        }, onStart() {
+        }, lastMovement: { x: 0, y: 0 }, onStart() {
             return true;
         },
         onMove() {
@@ -490,6 +490,8 @@ class ItemMovement {
                 this.onEnd();
                 break;
         }
+        this.data.lastMovement.x = this.data.movement.px.horizontal;
+        this.data.lastMovement.y = this.data.movement.px.vertical;
         this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
         this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
         this.data.position.x = this.selection.currentPosition.x;
@@ -500,13 +502,16 @@ class ItemMovement {
             movement: this.data.movement,
             time: this.state.get('$data.chart.time'),
         };
-        if (this.canMove(this.data.state, onArg)) {
-            this.moveItems();
-        }
-        else {
-            this.data.pointerState = 'up';
-            if (this.data.state === 'end') {
-                this.restoreInitialItems();
+        if (this.data.lastMovement.x !== this.data.movement.px.horizontal ||
+            this.data.lastMovement.y !== this.data.movement.px.vertical) {
+            if (this.canMove(this.data.state, onArg)) {
+                this.moveItems();
+            }
+            else {
+                this.data.pointerState = 'up';
+                if (this.data.state === 'end') {
+                    this.restoreInitialItems();
+                }
             }
         }
         this.updateData();
@@ -1472,6 +1477,8 @@ var utc = createCommonjsModule(function (module, exports) {
 !function(t,i){module.exports=i();}(commonjsGlobal,function(){return function(t,i,e){var s=(new Date).getTimezoneOffset(),n=i.prototype;e.utc=function(t,e){return new i({date:t,utc:!0,format:e})},n.utc=function(){return e(this.toDate(),{locale:this.$L,utc:!0})},n.local=function(){return e(this.toDate(),{locale:this.$L,utc:!1})};var u=n.parse;n.parse=function(t){t.utc&&(this.$u=!0),this.$utils().u(t.$offset)||(this.$offset=t.$offset),u.call(this,t);};var o=n.init;n.init=function(){if(this.$u){var t=this.$d;this.$y=t.getUTCFullYear(),this.$M=t.getUTCMonth(),this.$D=t.getUTCDate(),this.$W=t.getUTCDay(),this.$H=t.getUTCHours(),this.$m=t.getUTCMinutes(),this.$s=t.getUTCSeconds(),this.$ms=t.getUTCMilliseconds();}else o.call(this);};var f=n.utcOffset;n.utcOffset=function(t){var i=this.$utils().u;if(i(t))return this.$u?0:i(this.$offset)?f.call(this):this.$offset;var e,n=Math.abs(t)<=16?60*t:t;return 0!==t?(e=this.local().add(n+s,"minute")).$offset=n:e=this.utc(),e};var r=n.format;n.format=function(t){var i=t||(this.$u?"YYYY-MM-DDTHH:mm:ss[Z]":"");return r.call(this,i)},n.valueOf=function(){var t=this.$utils().u(this.$offset)?0:this.$offset+s;return this.$d.valueOf()-6e4*t},n.isUTC=function(){return !!this.$u},n.toISOString=function(){return this.toDate().toISOString()},n.toString=function(){return this.toDate().toUTCString()};}});
 });
 
+let cachedTextEncoder = new TextEncoder('utf-8');
+
 /**
  * Api functions
  *
@@ -1745,9 +1752,6 @@ class ItemResizing {
         if (this.data.handle.onlyWhenSelected) {
             visible = visible && item.selected;
         }
-        if (visible) {
-            console.log(props);
-        }
         const rightStyleMap = this.getRightStyleMap(item, visible);
         const leftStyleMap = this.getLeftStyleMap(item, visible);
         const onLeftPointerDown = {
@@ -1852,7 +1856,7 @@ class SelectionPlugin {
         // watch and update items that are inside selection
         this.unsub.push(this.state.subscribe('config.chart.items', (items) => {
             this.data.selected[ITEM] = this.data.selected[ITEM].map((item) => items[item.id]);
-        }));
+        }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
         // TODO: watch and update cells that are inside selection
     }
     setWrapper() {

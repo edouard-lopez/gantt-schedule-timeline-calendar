@@ -66,5 +66,5 @@ export interface Cumulations {
 export interface RelativeVerticalPosition {
     [key: string]: number;
 }
-export declare function Plugin(options?: Options): (vidoInstance: Vido) => void;
+export declare function Plugin(options?: Options): (vidoInstance: any) => void;
 //# sourceMappingURL=item-movement.plugin.d.ts.map

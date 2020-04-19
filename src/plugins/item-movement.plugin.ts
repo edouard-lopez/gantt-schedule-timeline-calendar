@@ -68,6 +68,7 @@ export interface PluginData extends Options {
   moving: Item[];
   initialItems: Item[];
   movement: Movement;
+  lastMovement: Point;
   position: Point;
   pointerState: 'up' | 'down' | 'move';
   state: State;
@@ -118,6 +119,7 @@ function gemerateEmptyPluginData(options: Options): PluginData {
       px: { horizontal: 0, vertical: 0 },
       time: 0,
     },
+    lastMovement: { x: 0, y: 0 },
     onStart() {
       return true;
     },
@@ -383,6 +385,8 @@ class ItemMovement {
         break;
     }
 
+    this.data.lastMovement.x = this.data.movement.px.horizontal;
+    this.data.lastMovement.y = this.data.movement.px.vertical;
     this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
     this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
     this.data.position.x = this.selection.currentPosition.x;
@@ -394,12 +398,17 @@ class ItemMovement {
       movement: this.data.movement,
       time: this.state.get('$data.chart.time'),
     };
-    if (this.canMove(this.data.state, onArg)) {
-      this.moveItems();
-    } else {
-      this.data.pointerState = 'up';
-      if (this.data.state === 'end') {
-        this.restoreInitialItems();
+    if (
+      this.data.lastMovement.x !== this.data.movement.px.horizontal ||
+      this.data.lastMovement.y !== this.data.movement.px.vertical
+    ) {
+      if (this.canMove(this.data.state, onArg)) {
+        this.moveItems();
+      } else {
+        this.data.pointerState = 'up';
+        if (this.data.state === 'end') {
+          this.restoreInitialItems();
+        }
       }
     }
     this.updateData();

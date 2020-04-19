@@ -1,5 +1,5 @@
 import { ITEM, ITEM_TYPE, CELL, CELL_TYPE, Point, PointerState } from './timeline-pointer.plugin';
-import { Item, Cell, Vido } from '../gstc';
+import { Item, Cell } from '../gstc';
 export declare type ModKey = 'shift' | 'ctrl' | 'alt' | '';
 export interface Options {
     enabled?: boolean;
@@ -49,5 +49,5 @@ export interface PluginData extends Options {
     events: PointerEvents;
     targetType: ITEM_TYPE | CELL_TYPE | '';
 }
-export declare function Plugin(options?: Options): (vidoInstance: Vido) => () => void;
+export declare function Plugin(options?: Options): (vidoInstance: any) => () => void;
 //# sourceMappingURL=selection.plugin.d.ts.map

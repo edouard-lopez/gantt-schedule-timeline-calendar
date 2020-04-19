@@ -4664,7 +4664,7 @@ function Vido(state, api) {
          * @param {boolean} leaveTail - leave last elements and do not destroy corresponding components
          * @returns {array} of components (with updated/destroyed/created ones)
          */
-        reuseComponents(currentComponents, dataArray, getProps, component, leaveTail = true) {
+        reuseComponents(currentComponents, dataArray, getProps, component, leaveTail = true, debug = false) {
             const modified = [];
             const currentLen = currentComponents.length;
             const dataLen = dataArray.length;
@@ -4679,7 +4679,7 @@ function Vido(state, api) {
                     const item = dataArray[dataLen - diff];
                     const newComponent = this.createComponent(component, getProps(item));
                     currentComponents.push(newComponent);
-                    modified.push(newComponent.instance);
+                    modified.push(newComponent);
                     diff--;
                 }
             }
@@ -4692,7 +4692,7 @@ function Vido(state, api) {
                 while (diff) {
                     const index = currentLen - diff;
                     if (!leaveTail) {
-                        modified.push(currentComponents[index].instance);
+                        modified.push(currentComponents[index]);
                         currentComponents[index].destroy();
                     }
                     diff--;
@@ -4702,10 +4702,20 @@ function Vido(state, api) {
                 }
             }
             let index = 0;
+            if (debug)
+                console.log('modified components', modified);
+            if (debug)
+                console.log('current components', currentComponents);
+            if (debug)
+                console.log('data array', dataArray);
             for (const component of currentComponents) {
-                const item = dataArray[index];
-                if (!modified.includes(component.instance) && component) {
-                    component.change(getProps(item), { leave: leave && index >= leaveStartingAt });
+                const data = dataArray[index];
+                if (debug)
+                    console.log(`reuse components data at '${index}'`, data);
+                if (component && !modified.includes(component)) {
+                    if (debug)
+                        console.log('getProps fn result', getProps(data));
+                    component.change(getProps(data), { leave: leave && index >= leaveStartingAt });
                 }
                 index++;
             }
@@ -4858,6 +4868,31 @@ Vido.prototype.ifDefined = ifDefined;
 Vido.prototype.repeat = repeat;
 Vido.prototype.unsafeHTML = unsafeHTML;
 Vido.prototype.unti = until;
+
+/*! *****************************************************************************
+Copyright (c) Microsoft Corporation. All rights reserved.
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at http://www.apache.org/licenses/LICENSE-2.0
+
+THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+MERCHANTABLITY OR NON-INFRINGEMENT.
+
+See the Apache Version 2.0 License for specific language governing permissions
+and limitations under the License.
+***************************************************************************** */
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
 
 /**
  * A collection of shims that provide minimal functionality of the ES6 collections.
@@ -5863,27 +5898,11 @@ function Main(vido, props = {}) {
     function generateTree(bulk = null, eventInfo = null) {
         if (eventInfo && eventInfo.type === 'subscribe')
             return;
-        const configRows = state.get('config.list.rows');
-        const rows = [];
-        for (const rowId in configRows) {
-            rows.push(configRows[rowId]);
-        }
+        const rows = state.get('config.list.rows');
         api.fillEmptyRowValues(rows);
-        const configItems = state.get('config.chart.items');
-        const items = [];
-        for (const itemId in configItems) {
-            items.push(configItems[itemId]);
-        }
+        const items = state.get('config.chart.items');
         api.prepareItems(items);
-        const treeMap = api.makeTreeMap(rows, items);
-        const flatTreeMapById = api.getFlatTreeMapById(treeMap);
-        const flatTreeMap = api.flattenTreeMap(treeMap);
-        state
-            .multi()
-            .update('$data.treeMap', treeMap)
-            .update('$data.flatTreeMapById', flatTreeMapById)
-            .update('$data.flatTreeMap', flatTreeMap)
-            .done();
+        state.update('$data.treeMap', api.makeTreeMap(rows, items));
         update();
     }
     let rowsAndItems = 0;
@@ -5912,12 +5931,12 @@ function Main(vido, props = {}) {
     }));
     onDestroy(state.subscribeAll(['config.list.rows.*.parentId', 'config.chart.items.*.rowId'], () => {
         generateTree();
-        calculateHeightRelatedThings();
-        calculateVisibleRowsHeights();
+        //calculateHeightRelatedThings();
+        //calculateVisibleRowsHeights();
     }, { bulk: true }));
     function prepareExpanded() {
         const configRows = state.get('config.list.rows');
-        const rowsWithParentsExpanded = api.getRowsFromIds(api.getRowsWithParentsExpanded(state.get('$data.flatTreeMap'), state.get('$data.flatTreeMapById'), configRows), configRows);
+        const rowsWithParentsExpanded = api.getRowsWithParentsExpanded(configRows);
         state.update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded);
     }
     onDestroy(state.subscribeAll(['config.list.rows.*.expanded', '$data.treeMap;'], prepareExpanded, { bulk: true }));
@@ -5926,11 +5945,7 @@ function Main(vido, props = {}) {
         rowsHeight = api.recalculateRowsHeights(rowsWithParentsExpanded);
         const verticalArea = state.get('config.scroll.vertical.area');
         rowsWithParentsExpanded = api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
-        state
-            .multi()
-            .update('$data.list.rowsHeight', rowsHeight)
-            .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
-            .done();
+        state.update('$data.list.rowsHeight', rowsHeight);
     }
     onDestroy(state.subscribeAll([
         'config.list.rows.*.expanded',
@@ -5975,8 +5990,11 @@ function Main(vido, props = {}) {
             }
             count++;
         }
-        state.update('config.scroll.vertical.lastPageSize', currentHeight);
-        state.update('config.scroll.vertical.lastPageCount', count);
+        state
+            .multi()
+            .update('config.scroll.vertical.lastPageSize', currentHeight)
+            .update('config.scroll.vertical.lastPageCount', count)
+            .done();
         return currentHeight;
     }
     function generateVisibleRowsAndItems() {
@@ -5994,9 +6012,8 @@ function Main(vido, props = {}) {
                 return row.id !== currentVisibleRows[index].id;
             });
         }
-        let multi = state.multi();
         if (shouldUpdate) {
-            multi = multi.update('$data.list.visibleRows', visibleRows);
+            state.update('$data.list.visibleRows', visibleRows);
         }
         const visibleItems = [];
         for (const row of visibleRows) {
@@ -6004,11 +6021,19 @@ function Main(vido, props = {}) {
                 visibleItems.push(item);
             }
         }
-        multi = multi.update('$data.chart.visibleItems', visibleItems);
-        multi.done();
+        let updateVisibleItems = false;
+        const currentVisibleItems = state.get('$data.chart.visibleItems');
+        if (visibleItems.length !== currentVisibleItems) {
+            updateVisibleItems = true;
+        }
+        else if (visibleItems.map((item) => item.id).join('-') !== currentVisibleItems.map((item) => item.id).join('-')) {
+            updateVisibleItems = true;
+        }
+        if (updateVisibleItems)
+            state.update('$data.chart.visibleItems', visibleItems);
         update();
     }
-    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items'], generateVisibleRowsAndItems, { bulk: true, ignore: ['config.chart.items.*.$data.detached'] }));
+    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'], generateVisibleRowsAndItems, { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }));
     function getLastPageDatesWidth(chartWidth, allDates) {
         if (allDates.length === 0)
             return 0;
@@ -6255,7 +6280,7 @@ function Main(vido, props = {}) {
     }
     onDestroy(state.subscribeAll(['$data.list.visibleRows', 'config.scroll.vertical', 'config.chart.items'], () => {
         updateVisibleItems().done();
-    }, { ignore: ['config.chart.items.*.$data.detached'] }));
+    }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
     function recalculateTimes(reason) {
         const chartWidth = state.get('$data.chart.dimensions.width');
         if (!chartWidth) {
@@ -7428,8 +7453,9 @@ function ListColumnRow(vido, props) {
             if (column.expander) {
                 styleMap.style['--expander-padding-width'] = expander.padding * (row.$data.parents.length + 1) + 'px';
             }
+            const rows = state.get('config.list.rows');
             for (const parentId of row.$data.parents) {
-                const parent = state.get(`$data.flatTreeMapById.${parentId}`);
+                const parent = rows[parentId];
                 if (typeof parent.style === 'object' && parent.style.constructor.name === 'Object') {
                     if (typeof parent.style.children === 'object') {
                         const childrenStyle = parent.style.children;
@@ -8427,7 +8453,7 @@ function ChartTimelineItems(vido, props = {}) {
         reuseComponents(rowsComponents, visibleRows, (row) => ({ row }), ItemsRowComponent, false);
         update();
     }
-    onDestroy(state.subscribeAll(['$data.list.visibleRows;', 'config.components.ChartTimelineItemsRow', 'config.chart.items'], createRowComponents, { ignore: ['config.chart.items.*.$data.detached'] }));
+    onDestroy(state.subscribeAll(['$data.list.visibleRows;', 'config.components.ChartTimelineItemsRow', 'config.chart.items.*.rowId'], createRowComponents));
     onDestroy(() => {
         rowsComponents.forEach((row) => row.destroy());
     });
@@ -8481,7 +8507,7 @@ function ChartTimelineItemsRow(vido, props) {
     onDestroy(state.subscribe('config.wrappers.ChartTimelineItemsRow', (value) => (wrapper = value)));
     let ItemComponent;
     onDestroy(state.subscribe('config.components.ChartTimelineItemsRowItem', (value) => (ItemComponent = value)));
-    let itemsPath = `$data.flatTreeMapById.${props.row.id}.$data.items`;
+    let itemsPath = `config.list.rows.${props.row.id}.$data.items`;
     let rowSub, itemsSub;
     let classNameCurrent = '';
     const itemComponents = [], styleMap = new StyleMap({ width: '', height: '' }, true);
@@ -8514,16 +8540,17 @@ function ChartTimelineItemsRow(vido, props) {
             updateDom();
             update();
         });
-        itemsSub = state.subscribe(itemsPath, (value) => {
+        itemsSub = state.subscribeAll([itemsPath, 'config.chart.items'], () => {
+            const value = state.get(itemsPath);
             if (value === undefined) {
                 shouldDetach = true;
-                reuseComponents(itemComponents, [], (item) => ({ row, item }), ItemComponent);
+                reuseComponents(itemComponents, [], () => null, ItemComponent, false);
                 return update();
             }
-            reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent);
+            reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent, false);
             updateDom();
             update();
-        }, { ignore: [`${itemsPath}.$data.detached`] });
+        }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] });
     }
     const componentName = 'chart-timeline-items-row';
     let className;
@@ -8531,10 +8558,10 @@ function ChartTimelineItemsRow(vido, props) {
         className = api.getClass(componentName);
         update();
     }));
-    onChange((changedProps, options) => {
+    onChange(function onPropsChange(changedProps, options) {
         if (options.leave || changedProps.row === undefined) {
             shouldDetach = true;
-            reuseComponents(itemComponents, [], (item) => ({ row: undefined, item }), ItemComponent, false);
+            reuseComponents(itemComponents, [], (item) => ({ row: undefined, item: undefined }), ItemComponent, false);
             return update();
         }
         props = changedProps;
@@ -8557,13 +8584,11 @@ function ChartTimelineItemsRow(vido, props) {
     const componentActions = api.getActions(componentName);
     componentActions.push(BindElementAction$6);
     const actions = Actions.create(componentActions, actionProps);
-    return (templateProps) => {
-        return wrapper(html `
+    return (templateProps) => wrapper(html `
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
           ${itemComponents.map((i) => i.html())}
         </div>
       `, { props, vido, templateProps });
-    };
 }
 
 /**
@@ -8617,15 +8642,16 @@ function ChartTimelineItemsRowItem(vido, props) {
         var _a, _b, _c, _d, _e, _f, _g, _h;
         if (leave || time.levels.length === 0 || !time.levels[time.level] || time.levels[time.level].length === 0) {
             shouldDetach = true;
-            if (props.item)
-                state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+            props.item.$data.detached = shouldDetach;
+            //if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
             return update();
         }
         itemLeftPx = props.item.$data.position.actualLeft;
         itemWidthPx = props.item.$data.actualWidth;
         if (props.item.time.end <= time.leftGlobal || props.item.time.start >= time.rightGlobal || itemWidthPx <= 0) {
             shouldDetach = true;
-            state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+            props.item.$data.detached = shouldDetach;
+            //state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
             return update();
         }
         classNameCurrent = className;
@@ -8656,8 +8682,8 @@ function ChartTimelineItemsRowItem(vido, props) {
         styleMap.setStyle({});
         const inViewPort = api.isItemInViewport(props.item, time.leftGlobal, time.rightGlobal);
         shouldDetach = !inViewPort;
-        //props.item.$data.detached = shouldDetach;
-        state.update(`config.chart.items.${props.item.id}.$data.detached`, shouldDetach);
+        props.item.$data.detached = shouldDetach;
+        //state.update(`config.chart.items.${props.item.id}.$data.detached`, shouldDetach);
         if (inViewPort) {
             // update style only when visible to prevent browser's recalculate style
             styleMap.style.width = itemWidthPx + 'px';
@@ -8708,13 +8734,15 @@ function ChartTimelineItemsRowItem(vido, props) {
         if (options.leave || changedProps.row === undefined || changedProps.item === undefined) {
             leave = true;
             shouldDetach = true;
-            if (props.item)
-                state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+            props.item.$data.detached = shouldDetach;
+            //if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
             //props = changedProps;
             return update();
         }
         else {
             shouldDetach = false;
+            //state.update(`config.chart.items.${props.item.id}.$data.detached`, false);
+            props.item.$data.detached = shouldDetach;
             leave = false;
         }
         props = changedProps;
@@ -8733,8 +8761,7 @@ function ChartTimelineItemsRowItem(vido, props) {
     componentActions.push(BindElementAction$7);
     const actions = Actions.create(componentActions, actionProps);
     const detach = new Detach(() => shouldDetach);
-    return (templateProps) => {
-        return wrapper(html `
+    return (templateProps) => wrapper(html `
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
           ${cutterLeft()}
           <div class=${labelClassName} title=${props.item.isHTML ? null : props.item.label}>
@@ -8743,7 +8770,6 @@ function ChartTimelineItemsRowItem(vido, props) {
           ${cutterRight()}
         </div>
       `, { vido, props, templateProps });
-    };
 }
 
 /**
@@ -9694,16 +9720,19 @@ Matcher.prototype.match = function match(match) {
     return true;
 };
 
-function WildcardObject(obj, delimeter, wildcard) {
+function WildcardObject(obj, delimeter, wildcard, is_match = undefined) {
     this.obj = obj;
     this.delimeter = delimeter;
     this.wildcard = wildcard;
+    this.is_match = is_match;
 }
 WildcardObject.prototype.simpleMatch = function simpleMatch(first, second) {
     if (first === second)
         return true;
     if (first === this.wildcard)
         return true;
+    if (this.is_match)
+        return this.is_match(first, second);
     const index = first.indexOf(this.wildcard);
     if (index > -1) {
         const end = first.substr(index + 1);
@@ -9718,6 +9747,8 @@ WildcardObject.prototype.simpleMatch = function simpleMatch(first, second) {
     return false;
 };
 WildcardObject.prototype.match = function match(first, second) {
+    if (this.is_match)
+        return this.is_match(first, second);
     return (first === second ||
         first === this.wildcard ||
         second === this.wildcard ||
@@ -9735,7 +9766,7 @@ WildcardObject.prototype.handleArray = function handleArray(wildcard, currentArr
     let index = 0;
     for (const item of currentArr) {
         const key = index.toString();
-        const currentPath = path === '' ? key : path + this.delimeter + index;
+        const currentPath = path === "" ? key : path + this.delimeter + index;
         if (currentWildcardPath === this.wildcard ||
             currentWildcardPath === key ||
             this.simpleMatch(currentWildcardPath, key)) {
@@ -9755,7 +9786,7 @@ WildcardObject.prototype.handleObject = function handleObject(wildcard, currentO
     const currentWildcardPath = wildcard.substring(partIndex, nextPartIndex);
     for (let key in currentObj) {
         key = key.toString();
-        const currentPath = path === '' ? key : path + this.delimeter + key;
+        const currentPath = path === "" ? key : path + this.delimeter + key;
         if (currentWildcardPath === this.wildcard ||
             currentWildcardPath === key ||
             this.simpleMatch(currentWildcardPath, key)) {
@@ -9773,52 +9804,171 @@ WildcardObject.prototype.goFurther = function goFurther(wildcard, currentObj, pa
     return this.handleObject(wildcard, currentObj, partIndex, currentPath, result);
 };
 WildcardObject.prototype.get = function get(wildcard) {
-    return this.goFurther(wildcard, this.obj, 0, '');
+    return this.goFurther(wildcard, this.obj, 0, "");
 };
 
 class ObjectPath {
-    static get(path, obj, copiedPath = null) {
-        if (copiedPath === null) {
-            copiedPath = path.slice();
-        }
-        if (copiedPath.length === 0 || typeof obj === "undefined") {
-            return obj;
-        }
-        const currentPath = copiedPath.shift();
-        if (!obj.hasOwnProperty(currentPath)) {
-            return undefined;
-        }
-        if (copiedPath.length === 0) {
-            return obj[currentPath];
-        }
-        return ObjectPath.get(path, obj[currentPath], copiedPath);
-    }
-    static set(path, newValue, obj, copiedPath = null) {
-        if (copiedPath === null) {
-            copiedPath = path.slice();
-        }
-        if (copiedPath.length === 0) {
-            for (const key in obj) {
-                delete obj[key];
+    static get(path, obj, create = false) {
+        let currObj = obj;
+        for (const currentPath of path) {
+            if (currObj.hasOwnProperty(currentPath)) {
+                currObj = currObj[currentPath];
             }
-            for (const key in newValue) {
-                obj[key] = newValue[key];
+            else if (create) {
+                currObj[currentPath] = {};
+                currObj = currObj[currentPath];
+            }
+            else {
+                return undefined;
+            }
+        }
+        return currObj;
+    }
+    static set(path, value, obj) {
+        if (path.length === 0) {
+            for (const key in value) {
+                obj[key] = value[key];
             }
             return;
         }
-        const currentPath = copiedPath.shift();
-        if (copiedPath.length === 0) {
-            obj[currentPath] = newValue;
-            return;
+        const prePath = path.slice();
+        const lastPath = prePath.pop();
+        const get = ObjectPath.get(prePath, obj, true);
+        if (typeof get === "object") {
+            get[lastPath] = value;
         }
-        if (!obj) {
-            obj = {};
-        }
-        if (!obj.hasOwnProperty(currentPath)) {
-            obj[currentPath] = {};
-        }
-        ObjectPath.set(path, newValue, obj[currentPath], copiedPath);
+        return value;
     }
+}
+
+let wasm;
+
+let WASM_VECTOR_LEN = 0;
+
+let cachegetUint8Memory0 = null;
+function getUint8Memory0() {
+    if (cachegetUint8Memory0 === null || cachegetUint8Memory0.buffer !== wasm.memory.buffer) {
+        cachegetUint8Memory0 = new Uint8Array(wasm.memory.buffer);
+    }
+    return cachegetUint8Memory0;
+}
+
+let cachedTextEncoder = new TextEncoder('utf-8');
+
+const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
+    ? function (arg, view) {
+    return cachedTextEncoder.encodeInto(arg, view);
+}
+    : function (arg, view) {
+    const buf = cachedTextEncoder.encode(arg);
+    view.set(buf);
+    return {
+        read: arg.length,
+        written: buf.length
+    };
+});
+
+function passStringToWasm0(arg, malloc, realloc) {
+
+    if (realloc === undefined) {
+        const buf = cachedTextEncoder.encode(arg);
+        const ptr = malloc(buf.length);
+        getUint8Memory0().subarray(ptr, ptr + buf.length).set(buf);
+        WASM_VECTOR_LEN = buf.length;
+        return ptr;
+    }
+
+    let len = arg.length;
+    let ptr = malloc(len);
+
+    const mem = getUint8Memory0();
+
+    let offset = 0;
+
+    for (; offset < len; offset++) {
+        const code = arg.charCodeAt(offset);
+        if (code > 0x7F) break;
+        mem[ptr + offset] = code;
+    }
+
+    if (offset !== len) {
+        if (offset !== 0) {
+            arg = arg.slice(offset);
+        }
+        ptr = realloc(ptr, len, len = offset + arg.length * 3);
+        const view = getUint8Memory0().subarray(ptr + offset, ptr + len);
+        const ret = encodeString(arg, view);
+
+        offset += ret.written;
+    }
+
+    WASM_VECTOR_LEN = offset;
+    return ptr;
+}
+/**
+* @param {string} pattern
+* @param {string} input
+* @returns {boolean}
+*/
+function is_match(pattern, input) {
+    var ptr0 = passStringToWasm0(pattern, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len0 = WASM_VECTOR_LEN;
+    var ptr1 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    var ret = wasm.is_match(ptr0, len0, ptr1, len1);
+    return ret !== 0;
+}
+
+async function load(module, imports) {
+    if (typeof Response === 'function' && module instanceof Response) {
+
+        if (typeof WebAssembly.instantiateStreaming === 'function') {
+            try {
+                return await WebAssembly.instantiateStreaming(module, imports);
+
+            } catch (e) {
+                if (module.headers.get('Content-Type') != 'application/wasm') {
+                    console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);
+
+                } else {
+                    throw e;
+                }
+            }
+        }
+
+        const bytes = await module.arrayBuffer();
+        return await WebAssembly.instantiate(bytes, imports);
+
+    } else {
+
+        const instance = await WebAssembly.instantiate(module, imports);
+
+        if (instance instanceof WebAssembly.Instance) {
+            return { instance, module };
+
+        } else {
+            return instance;
+        }
+    }
+}
+
+async function init(input) {
+    if (typeof input === 'undefined') {
+        input = import.meta.url.replace(/\.js$/, '_bg.wasm');
+    }
+    const imports = {};
+
+
+    if (typeof input === 'string' || (typeof Request === 'function' && input instanceof Request) || (typeof URL === 'function' && input instanceof URL)) {
+        input = fetch(input);
+    }
+
+    const { instance, module } = await load(await input, imports);
+
+    wasm = instance.exports;
+    init.__wbindgen_wasm_module = module;
+
+    return wasm;
 }
 
 function log(message, info) {
@@ -9829,6 +9979,7 @@ const defaultOptions$1 = {
     notRecursive: `;`,
     param: `:`,
     wildcard: `*`,
+    experimentalMatch: false,
     queue: false,
     maxSimultaneousJobs: 1000,
     log,
@@ -9852,6 +10003,7 @@ class DeepState {
         this.jobsRunning = 0;
         this.updateQueue = [];
         this.subscribeQueue = [];
+        this.listenersIgnoreCache = new WeakMap();
         this.listeners = new Map();
         this.waitingListeners = new Map();
         this.data = data;
@@ -9860,6 +10012,13 @@ class DeepState {
         this.pathGet = ObjectPath.get;
         this.pathSet = ObjectPath.set;
         this.scan = new WildcardObject(this.data, this.options.delimeter, this.options.wildcard);
+    }
+    initExperimentalMatcher(pathToWasm = undefined) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield init(pathToWasm);
+            this.is_match = is_match;
+            this.scan = new WildcardObject(this.data, this.options.delimeter, this.options.wildcard, this.is_match);
+        });
     }
     same(newValue, oldValue) {
         return ((["number", "string", "undefined", "boolean"].includes(typeof newValue) || newValue === null) &&
@@ -9873,6 +10032,8 @@ class DeepState {
         this.listeners = new Map();
     }
     match(first, second) {
+        if (this.is_match)
+            return this.is_match(first, second);
         if (first === second)
             return true;
         if (first === this.options.wildcard || second === this.options.wildcard)
@@ -10079,6 +10240,7 @@ class DeepState {
     subscribe(listenerPath, fn, options = defaultListenerOptions, type = "subscribe") {
         this.jobsRunning++;
         let listener = this.getCleanListener(fn, options);
+        this.listenersIgnoreCache.set(listener, { truthy: [], falsy: [] });
         const listenersCollection = this.getListenersCollection(listenerPath, listener);
         listenersCollection.count++;
         listenerPath = listenersCollection.path;
@@ -10218,11 +10380,18 @@ class DeepState {
         if (!listener.options.ignore)
             return false;
         for (const ignorePath of listener.options.ignore) {
-            if (updatePath.startsWith(ignorePath))
+            if (updatePath.startsWith(ignorePath)) {
                 return true;
-            const cuttedUpdatePath = this.cutPath(updatePath, ignorePath);
-            if (this.match(ignorePath, cuttedUpdatePath))
+            }
+            if (this.is_match && this.is_match(ignorePath, updatePath)) {
                 return true;
+            }
+            else {
+                const cuttedUpdatePath = this.cutPath(updatePath, ignorePath);
+                if (this.match(ignorePath, cuttedUpdatePath)) {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -10436,7 +10605,10 @@ class DeepState {
     wildcardNotify(groupedListenersPack, waitingPaths) {
         let alreadyNotified = [];
         for (const groupedListeners of groupedListenersPack) {
-            alreadyNotified = [...alreadyNotified, ...this.notifyListeners(groupedListeners, alreadyNotified)];
+            const notified = this.notifyListeners(groupedListeners, alreadyNotified);
+            for (const notifiedId of notified) {
+                alreadyNotified.push(notifiedId);
+            }
         }
         for (const path of waitingPaths) {
             this.executeWaitingListeners(path);
@@ -10650,9 +10822,18 @@ function stateFromConfig(userConfig) {
     // @ts-ignore
     return (this.state = new DeepState(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 }));
 }
+function stateFromConfigExperimental(userConfig) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // @ts-ignore
+        this.state = new DeepState(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 });
+        yield this.state.initExperimentalMatcher('./wildcard_matcher_bg.wasm');
+        return this.state;
+    });
+}
 const publicApi = {
     name: lib,
     stateFromConfig,
+    stateFromConfigExperimental,
     merge: mergeDeep$1,
     date(time) {
         return time ? dayjs_min(time) : dayjs_min();
@@ -10704,7 +10885,8 @@ class Api {
     prepareItems(items) {
         const defaultItemHeight = this.state.get('config.chart.item.height');
         const itemsObj = this.state.get('config.chart.items');
-        for (const item of items) {
+        for (const itemId in items) {
+            const item = items[itemId];
             // linked items should have links to each others
             if (item.linkedWith && item.linkedWith.length) {
                 for (const itemId of item.linkedWith) {
@@ -10718,6 +10900,7 @@ class Api {
             item.time.start = +item.time.start;
             item.time.end = +item.time.end;
             item.id = String(item.id);
+            //if (typeof item.selected !== 'boolean') item.selected = false;
             const defaultItem = this.state.get('config.chart.item');
             if (typeof item.height !== 'number')
                 item.height = defaultItemHeight;
@@ -10881,7 +11064,8 @@ class Api {
     }
     generateParents(rows, parentName = 'parentId') {
         const parents = {};
-        for (const row of rows) {
+        for (const rowId in rows) {
+            const row = rows[rowId];
             const parentId = row[parentName] !== undefined && row[parentName] !== null ? row[parentName] : '';
             if (parents[parentId] === undefined) {
                 parents[parentId] = {};
@@ -10909,55 +11093,23 @@ class Api {
     }
     makeTreeMap(rows, items) {
         const itemParents = this.generateParents(items, 'rowId');
-        for (const row of rows) {
-            row.$data.items = itemParents[row.id] !== undefined ? Object.values(itemParents[row.id]) : [];
+        for (const rowId in rows) {
+            rows[rowId].$data.items = itemParents[rowId] !== undefined ? Object.values(itemParents[rowId]) : [];
         }
         const rowParents = this.generateParents(rows);
         const tree = { id: '', $data: { children: [], parents: [], items: [] } };
         return this.fastTree(rowParents, tree);
     }
-    getFlatTreeMapById(treeMap, flatTreeMapById = {}) {
-        for (const child of treeMap.$data.children) {
-            flatTreeMapById[child.id] = child;
-            this.getFlatTreeMapById(child, flatTreeMapById);
-        }
-        return flatTreeMapById;
-    }
-    flattenTreeMap(treeMap, rows = []) {
-        for (const child of treeMap.$data.children) {
-            rows.push(child.id);
-            this.flattenTreeMap(child, rows);
-        }
-        return rows;
-    }
-    getRowsFromMap(flatTreeMap, rows) {
-        return flatTreeMap.map((node) => rows[node.id]);
-    }
-    getRowsFromIds(ids, rows) {
-        const result = [];
-        for (const id of ids) {
-            result.push(rows[id]);
-        }
-        return result;
-    }
-    getRowsWithParentsExpanded(flatTreeMap, flatTreeMapById, rows) {
-        if (!flatTreeMap ||
-            !flatTreeMapById ||
-            !rows ||
-            flatTreeMap.length === 0 ||
-            flatTreeMapById.length === 0 ||
-            Object.keys(rows).length === 0) {
-            return [];
-        }
+    getRowsWithParentsExpanded(rows) {
         const rowsWithParentsExpanded = [];
-        next: for (const rowId of flatTreeMap) {
-            for (const parentId of flatTreeMapById[rowId].$data.parents) {
+        next: for (const rowId in rows) {
+            for (const parentId of rows[rowId].$data.parents) {
                 const parent = rows[parentId];
                 if (!parent || !parent.expanded) {
                     continue next;
                 }
             }
-            rowsWithParentsExpanded.push(rowId);
+            rowsWithParentsExpanded.push(rows[rowId]);
         }
         return rowsWithParentsExpanded;
     }
@@ -11115,8 +11267,6 @@ class Api {
 function getDefaultData() {
     return {
         treeMap: { id: '', $data: { children: [], parents: [], items: [] } },
-        flatTreeMap: [],
-        flatTreeMapById: {},
         list: {
             visibleRows: [],
             visibleRowsHeight: 0,

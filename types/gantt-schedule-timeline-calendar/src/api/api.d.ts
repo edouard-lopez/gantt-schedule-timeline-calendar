@@ -1,5 +1,5 @@
 import { Time } from './time';
-import DeepState from '../../../deep-state-observer';
+import DeepState from 'deep-state-observer';
 import dayjs from 'dayjs';
 import { Config, DataChartTime, ScrollTypeHorizontal, Row, Item, Vido, ScrollTypeVertical } from '../gstc';
 export declare function getClass(name: string): string;

@@ -355,9 +355,6 @@ class ItemResizing {
     if (this.data.handle.onlyWhenSelected) {
       visible = visible && item.selected;
     }
-    if (visible) {
-      console.log(props);
-    }
     const rightStyleMap = this.getRightStyleMap(item, visible);
     const leftStyleMap = this.getLeftStyleMap(item, visible);
     const onLeftPointerDown = {

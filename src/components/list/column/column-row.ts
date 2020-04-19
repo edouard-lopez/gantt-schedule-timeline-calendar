@@ -137,8 +137,9 @@ export default function ListColumnRow(vido: Vido, props: Props) {
         if (column.expander) {
           styleMap.style['--expander-padding-width'] = expander.padding * (row.$data.parents.length + 1) + 'px';
         }
+        const rows = state.get('config.list.rows');
         for (const parentId of row.$data.parents) {
-          const parent = state.get(`$data.flatTreeMapById.${parentId}`);
+          const parent = rows[parentId];
           if (typeof parent.style === 'object' && parent.style.constructor.name === 'Object') {
             if (typeof parent.style.children === 'object') {
               const childrenStyle = parent.style.children;

@@ -1,9 +1,9 @@
 import 'pepjs';
 import { Api } from './api/api';
-import { vido, lithtml, ComponentInstance } from '@neuronet.io/vido/vido.d';
+import { vido, lithtml, ComponentInstance } from './vido';
 import { Dayjs, OpUnitType } from 'dayjs';
 import { Properties as CSSProps } from 'csstype';
-import DeepState from '../../deep-state-observer/index';
+import DeepState from 'deep-state-observer';
 export declare type Vido = vido<DeepState, Api>;
 export interface RowDataPosition {
     top: number;

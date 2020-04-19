@@ -47,7 +47,7 @@
     <script src="./highlight-weekends.plugin.umd.js"></script>
     <script src="./gstc.umd.js"></script>
     <script>
-      const iterations = 1000;
+      const iterations = 500;
 
       const pallete = [
         '#E74C3C',
@@ -222,26 +222,57 @@
         },
       };
 
-      let GSTCState = (window.state = GSTC.api.stateFromConfig(config));
-      GSTCState.subscribe('config.plugin.ItemMovement', (itemMovement) => {
-        if (!itemMovement || !itemMovement.item) return;
-        state.update(`config.chart.items.${itemMovement.item.id}.isResizing`, itemMovement.item.resizing);
-      });
+      GSTC.api.stateFromConfigExperimental(config).then((GSTCState) => {
+        GSTCState.subscribe('config.plugin.ItemMovement', (itemMovement) => {
+          if (!itemMovement || !itemMovement.item) return;
+          state.update(`config.chart.items.${itemMovement.item.id}.isResizing`, itemMovement.item.resizing);
+        });
 
-      GSTCState.subscribe('$data.chart.time.format.period', (period) => {
-        document.getElementById('period').innerText = period;
-      });
+        GSTCState.subscribe('$data.chart.time.format.period', (period) => {
+          document.getElementById('period').innerText = period;
+        });
 
-      const element = document.getElementById('app');
-      element.addEventListener('gstc-loaded', () => {
-        console.log('gstc loaded');
-        gstc.api.scrollToTime(new Date().getTime());
+        const element = document.getElementById('app');
+        element.addEventListener('gstc-loaded', () => {
+          console.log('gstc loaded');
+          gstc.api.scrollToTime(new Date().getTime());
+        });
+        const gstc = GSTC({
+          element,
+          state: GSTCState,
+        });
+        window.gstc = gstc; // debug
+        window.GSTCState = GSTCState;
+
+        gstc.state.subscribe('config.chart.time.zoom', (zoom) => {
+          document.getElementById('zoom').value = zoom;
+        });
+
+        document.getElementById('percent').addEventListener('input', (ev) => {
+          gstc.state.update('config.list.columns.percent', +ev.target.value);
+        });
+        document.getElementById('zoom').addEventListener('input', (ev) => {
+          gstc.state.update('config.chart.time.zoom', +ev.target.value);
+          const period = gstc.state.get('config.chart.time');
+        });
+        document.getElementById('change-something').addEventListener('click', () => {
+          gstc.state.update('config.list.rows', (rows) => {
+            for (const rowId in rows) {
+              rows[rowId].label += ' !';
+            }
+            rows['3'].parentId = '1';
+            rows['5'].parentId = '3';
+            rows['9'].parentId = '3';
+            rows['7'].parentId = '5';
+            rows['11'].parentId = '10';
+            rows['13'].parentId = '12';
+            for (let i = 20; i < 50; i++) {
+              rows[i.toString()].parentId = '15';
+            }
+            return rows;
+          });
+        });
       });
-      const gstc = GSTC({
-        element,
-        state: GSTCState,
-      });
-      window.gstc = gstc; // debug
 
       function deleteRow() {
         const random = (r) => r[Math.floor(Math.random() * r.length)];
@@ -335,35 +366,6 @@
       function destroy() {
         gstc.component.destroy();
       }
-
-      gstc.state.subscribe('config.chart.time.zoom', (zoom) => {
-        document.getElementById('zoom').value = zoom;
-      });
-
-      document.getElementById('percent').addEventListener('input', (ev) => {
-        gstc.state.update('config.list.columns.percent', +ev.target.value);
-      });
-      document.getElementById('zoom').addEventListener('input', (ev) => {
-        gstc.state.update('config.chart.time.zoom', +ev.target.value);
-        const period = gstc.state.get('config.chart.time');
-      });
-      document.getElementById('change-something').addEventListener('click', () => {
-        gstc.state.update('config.list.rows', (rows) => {
-          for (const rowId in rows) {
-            rows[rowId].label += ' !';
-          }
-          rows['3'].parentId = '1';
-          rows['5'].parentId = '3';
-          rows['9'].parentId = '3';
-          rows['7'].parentId = '5';
-          rows['11'].parentId = '10';
-          rows['13'].parentId = '12';
-          for (let i = 20; i < 50; i++) {
-            rows[i.toString()].parentId = '15';
-          }
-          return rows;
-        });
-      });
     </script>
   </body>
 </html>

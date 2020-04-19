@@ -26,6 +26,7 @@ import {
   DefaultItem,
   DataChartTimeLevelDate,
   ScrollTypeVertical,
+  Rows,
 } from '../gstc';
 import helpers from '@neuronet.io/vido/helpers';
 const mergeDeep = helpers.mergeDeep;
@@ -77,9 +78,17 @@ export function stateFromConfig(userConfig: Config) {
   return (this.state = new State(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 }));
 }
 
+export async function stateFromConfigExperimental(userConfig: Config) {
+  // @ts-ignore
+  this.state = new State(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 });
+  await this.state.initExperimentalMatcher('./wildcard_matcher_bg.wasm');
+  return this.state;
+}
+
 export const publicApi = {
   name: lib,
   stateFromConfig,
+  stateFromConfigExperimental,
   merge: mergeDeep,
   date(time) {
     return time ? dayjs(time) : dayjs();
@@ -151,10 +160,11 @@ export class Api {
     return item.time.start <= rightGlobal && item.time.end >= leftGlobal;
   }
 
-  prepareItems(items: Item[]) {
+  prepareItems(items: Items) {
     const defaultItemHeight = this.state.get('config.chart.item.height');
     const itemsObj: Items = this.state.get('config.chart.items');
-    for (const item of items) {
+    for (const itemId in items) {
+      const item = items[itemId];
       // linked items should have links to each others
       if (item.linkedWith && item.linkedWith.length) {
         for (const itemId of item.linkedWith) {
@@ -166,6 +176,7 @@ export class Api {
       item.time.start = +item.time.start;
       item.time.end = +item.time.end;
       item.id = String(item.id);
+      //if (typeof item.selected !== 'boolean') item.selected = false;
       const defaultItem: DefaultItem = this.state.get('config.chart.item');
       if (typeof item.height !== 'number') item.height = defaultItemHeight;
       if (!item.$data)
@@ -203,7 +214,7 @@ export class Api {
     return items;
   }
 
-  fillEmptyRowValues(rows: Row[]) {
+  fillEmptyRowValues(rows: Rows) {
     const defaultHeight = this.state.get('config.list.row.height');
     let top = 0;
     for (const rowId in rows) {
@@ -318,7 +329,8 @@ export class Api {
 
   generateParents(rows, parentName = 'parentId') {
     const parents = {};
-    for (const row of rows) {
+    for (const rowId in rows) {
+      const row = rows[rowId];
       const parentId = row[parentName] !== undefined && row[parentName] !== null ? row[parentName] : '';
       if (parents[parentId] === undefined) {
         parents[parentId] = {};
@@ -346,64 +358,26 @@ export class Api {
     return node;
   }
 
-  makeTreeMap(rows, items) {
+  makeTreeMap(rows: Rows, items: Items) {
     const itemParents = this.generateParents(items, 'rowId');
-    for (const row of rows) {
-      row.$data.items = itemParents[row.id] !== undefined ? Object.values(itemParents[row.id]) : [];
+    for (const rowId in rows) {
+      rows[rowId].$data.items = itemParents[rowId] !== undefined ? Object.values(itemParents[rowId]) : [];
     }
     const rowParents = this.generateParents(rows);
     const tree = { id: '', $data: { children: [], parents: [], items: [] } };
     return this.fastTree(rowParents, tree);
   }
 
-  getFlatTreeMapById(treeMap, flatTreeMapById = {}) {
-    for (const child of treeMap.$data.children) {
-      flatTreeMapById[child.id] = child;
-      this.getFlatTreeMapById(child, flatTreeMapById);
-    }
-    return flatTreeMapById;
-  }
-
-  flattenTreeMap(treeMap, rows = []) {
-    for (const child of treeMap.$data.children) {
-      rows.push(child.id);
-      this.flattenTreeMap(child, rows);
-    }
-    return rows;
-  }
-
-  getRowsFromMap(flatTreeMap, rows) {
-    return flatTreeMap.map((node) => rows[node.id]);
-  }
-
-  getRowsFromIds(ids, rows) {
-    const result = [];
-    for (const id of ids) {
-      result.push(rows[id]);
-    }
-    return result;
-  }
-
-  getRowsWithParentsExpanded(flatTreeMap, flatTreeMapById, rows) {
-    if (
-      !flatTreeMap ||
-      !flatTreeMapById ||
-      !rows ||
-      flatTreeMap.length === 0 ||
-      flatTreeMapById.length === 0 ||
-      Object.keys(rows).length === 0
-    ) {
-      return [];
-    }
+  getRowsWithParentsExpanded(rows: Rows) {
     const rowsWithParentsExpanded = [];
-    next: for (const rowId of flatTreeMap) {
-      for (const parentId of flatTreeMapById[rowId].$data.parents) {
+    next: for (const rowId in rows) {
+      for (const parentId of rows[rowId].$data.parents) {
         const parent = rows[parentId];
         if (!parent || !parent.expanded) {
           continue next;
         }
       }
-      rowsWithParentsExpanded.push(rowId);
+      rowsWithParentsExpanded.push(rows[rowId]);
     }
     return rowsWithParentsExpanded;
   }

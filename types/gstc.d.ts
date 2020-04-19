@@ -1,6 +1,6 @@
 import 'pepjs';
-import { Api } from './api/api';
 import { vido, lithtml, ComponentInstance } from '@neuronet.io/vido/vido.d';
+import { Api } from './api/api';
 import { Dayjs, OpUnitType } from 'dayjs';
 import { Properties as CSSProps } from 'csstype';
 import DeepState from 'deep-state-observer';
@@ -476,8 +476,6 @@ export interface DataElements {
 }
 export interface Data {
     treeMap: TreeMap;
-    flatTreeMap: string[];
-    flatTreeMapById: Rows;
     list: DataList;
     dimensions: Dimensions;
     chart: DataChart;
@@ -507,6 +505,7 @@ declare namespace GSTC {
     var api: {
         name: string;
         stateFromConfig: typeof import("./api/api").stateFromConfig;
+        stateFromConfigExperimental: typeof import("./api/api").stateFromConfigExperimental;
         merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
         date(time: any): Dayjs;
         setPeriod(period: OpUnitType): number;

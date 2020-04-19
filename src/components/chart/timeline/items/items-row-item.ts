@@ -65,14 +65,16 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
   function updateItem(time: DataChartTime = state.get('$data.chart.time')) {
     if (leave || time.levels.length === 0 || !time.levels[time.level] || time.levels[time.level].length === 0) {
       shouldDetach = true;
-      if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+      props.item.$data.detached = shouldDetach;
+      //if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
       return update();
     }
     itemLeftPx = props.item.$data.position.actualLeft;
     itemWidthPx = props.item.$data.actualWidth;
     if (props.item.time.end <= time.leftGlobal || props.item.time.start >= time.rightGlobal || itemWidthPx <= 0) {
       shouldDetach = true;
-      state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+      props.item.$data.detached = shouldDetach;
+      //state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
       return update();
     }
     classNameCurrent = className;
@@ -101,8 +103,8 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
     styleMap.setStyle({});
     const inViewPort = api.isItemInViewport(props.item, time.leftGlobal, time.rightGlobal);
     shouldDetach = !inViewPort;
-    //props.item.$data.detached = shouldDetach;
-    state.update(`config.chart.items.${props.item.id}.$data.detached`, shouldDetach);
+    props.item.$data.detached = shouldDetach;
+    //state.update(`config.chart.items.${props.item.id}.$data.detached`, shouldDetach);
     if (inViewPort) {
       // update style only when visible to prevent browser's recalculate style
       styleMap.style.width = itemWidthPx + 'px';
@@ -151,11 +153,14 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
     if (options.leave || changedProps.row === undefined || changedProps.item === undefined) {
       leave = true;
       shouldDetach = true;
-      if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+      props.item.$data.detached = shouldDetach;
+      //if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
       //props = changedProps;
       return update();
     } else {
       shouldDetach = false;
+      //state.update(`config.chart.items.${props.item.id}.$data.detached`, false);
+      props.item.$data.detached = shouldDetach;
       leave = false;
     }
     props = changedProps;
@@ -180,8 +185,8 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
   const actions = Actions.create(componentActions, actionProps);
   const detach = new Detach(() => shouldDetach);
 
-  return (templateProps) => {
-    return wrapper(
+  return (templateProps) =>
+    wrapper(
       html`
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
           ${cutterLeft()}
@@ -193,5 +198,4 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
       `,
       { vido, props, templateProps }
     );
-  };
 }

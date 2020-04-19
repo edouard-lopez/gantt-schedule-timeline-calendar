@@ -30,7 +30,7 @@ import {
   Scroll,
 } from '../gstc';
 
-import { Component, ComponentInstance } from '@neuronet.io/vido/vido';
+import { Component, ComponentInstance } from '@neuronet.io/vido/vido.d';
 
 export default function Main(vido: Vido, props = {}) {
   const { api, state, onDestroy, Actions, update, createComponent, html, StyleMap } = vido;
@@ -113,27 +113,11 @@ export default function Main(vido: Vido, props = {}) {
 
   function generateTree(bulk = null, eventInfo = null) {
     if (eventInfo && eventInfo.type === 'subscribe') return;
-    const configRows = state.get('config.list.rows');
-    const rows = [];
-    for (const rowId in configRows) {
-      rows.push(configRows[rowId]);
-    }
+    const rows = state.get('config.list.rows');
     api.fillEmptyRowValues(rows);
-    const configItems = state.get('config.chart.items');
-    const items = [];
-    for (const itemId in configItems) {
-      items.push(configItems[itemId]);
-    }
+    const items = state.get('config.chart.items');
     api.prepareItems(items);
-    const treeMap = api.makeTreeMap(rows, items);
-    const flatTreeMapById = api.getFlatTreeMapById(treeMap);
-    const flatTreeMap = api.flattenTreeMap(treeMap);
-    state
-      .multi()
-      .update('$data.treeMap', treeMap)
-      .update('$data.flatTreeMapById', flatTreeMapById)
-      .update('$data.flatTreeMap', flatTreeMap)
-      .done();
+    state.update('$data.treeMap', api.makeTreeMap(rows, items));
     update();
   }
 
@@ -163,13 +147,14 @@ export default function Main(vido: Vido, props = {}) {
       }
     })
   );
+
   onDestroy(
     state.subscribeAll(
       ['config.list.rows.*.parentId', 'config.chart.items.*.rowId'],
       () => {
         generateTree();
-        calculateHeightRelatedThings();
-        calculateVisibleRowsHeights();
+        //calculateHeightRelatedThings();
+        //calculateVisibleRowsHeights();
       },
       { bulk: true }
     )
@@ -177,10 +162,7 @@ export default function Main(vido: Vido, props = {}) {
 
   function prepareExpanded() {
     const configRows: Rows = state.get('config.list.rows');
-    const rowsWithParentsExpanded: Row[] = api.getRowsFromIds(
-      api.getRowsWithParentsExpanded(state.get('$data.flatTreeMap'), state.get('$data.flatTreeMapById'), configRows),
-      configRows
-    );
+    const rowsWithParentsExpanded: Row[] = api.getRowsWithParentsExpanded(configRows);
     state.update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded);
   }
   onDestroy(state.subscribeAll(['config.list.rows.*.expanded', '$data.treeMap;'], prepareExpanded, { bulk: true }));
@@ -190,11 +172,7 @@ export default function Main(vido: Vido, props = {}) {
     rowsHeight = api.recalculateRowsHeights(rowsWithParentsExpanded);
     const verticalArea: number = state.get('config.scroll.vertical.area');
     rowsWithParentsExpanded = api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
-    state
-      .multi()
-      .update('$data.list.rowsHeight', rowsHeight)
-      .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
-      .done();
+    state.update('$data.list.rowsHeight', rowsHeight);
   }
   onDestroy(
     state.subscribeAll(
@@ -252,8 +230,11 @@ export default function Main(vido: Vido, props = {}) {
       }
       count++;
     }
-    state.update('config.scroll.vertical.lastPageSize', currentHeight);
-    state.update('config.scroll.vertical.lastPageCount', count);
+    state
+      .multi()
+      .update('config.scroll.vertical.lastPageSize', currentHeight)
+      .update('config.scroll.vertical.lastPageCount', count)
+      .done();
     return currentHeight;
   }
 
@@ -271,9 +252,8 @@ export default function Main(vido: Vido, props = {}) {
         return row.id !== currentVisibleRows[index].id;
       });
     }
-    let multi = state.multi();
     if (shouldUpdate) {
-      multi = multi.update('$data.list.visibleRows', visibleRows);
+      state.update('$data.list.visibleRows', visibleRows);
     }
     const visibleItems = [];
     for (const row of visibleRows) {
@@ -281,15 +261,21 @@ export default function Main(vido: Vido, props = {}) {
         visibleItems.push(item);
       }
     }
-    multi = multi.update('$data.chart.visibleItems', visibleItems);
-    multi.done();
+    let updateVisibleItems = false;
+    const currentVisibleItems = state.get('$data.chart.visibleItems');
+    if (visibleItems.length !== currentVisibleItems) {
+      updateVisibleItems = true;
+    } else if (visibleItems.map((item) => item.id).join('-') !== currentVisibleItems.map((item) => item.id).join('-')) {
+      updateVisibleItems = true;
+    }
+    if (updateVisibleItems) state.update('$data.chart.visibleItems', visibleItems);
     update();
   }
   onDestroy(
     state.subscribeAll(
-      ['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items'],
+      ['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'],
       generateVisibleRowsAndItems,
-      { bulk: true, ignore: ['config.chart.items.*.$data.detached'] }
+      { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }
     )
   );
 
@@ -558,7 +544,7 @@ export default function Main(vido: Vido, props = {}) {
       () => {
         updateVisibleItems().done();
       },
-      { ignore: ['config.chart.items.*.$data.detached'] }
+      { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }
     )
   );
 
