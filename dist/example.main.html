@@ -27,7 +27,7 @@
     <h1>Gantt Schedule Timeline Calendar example #1</h1>
     <div>
       <input type="range" min="0" max="100" value="100" id="percent" />
-      <input type="range" min="12" max="23" value="20" id="zoom" />
+      <input type="range" min="12" max="26" value="20" id="zoom" />
       <div style="display: inline-block; width: 100px; text-align: center; font-weight: bold;" id="period"></div>
       <button id="change-something">Change something</button>
       <button onclick="deleteRow()">Delete row</button>
@@ -182,7 +182,8 @@
           HighlightWeekends.Plugin(),
           TimelinePointer.Plugin(),
           Selection.Plugin(),
-          ItemMovement.Plugin(/*{
+          ItemMovement.Plugin(),
+          /*{
             snapping: {
               start({ startTime }) {
                 return startTime;
@@ -203,7 +204,7 @@
               }
               return true;
             },
-          }*/),
+          }*/
           ItemResizing.Plugin(),
           CalendarScroll.Plugin(),
         ],

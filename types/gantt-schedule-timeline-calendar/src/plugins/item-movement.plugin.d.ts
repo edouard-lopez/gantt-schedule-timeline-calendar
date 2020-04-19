@@ -1,10 +1,9 @@
-import { Item, DataChartTime, Scroll, DataChartDimensions, Vido, Row } from '../gstc';
+import { Item, DataChartTime, Vido, Row } from '../gstc';
 import { Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
 export interface SnapArg {
+    item: Item;
     time: DataChartTime;
-    scroll: Scroll;
-    dimensions: DataChartDimensions;
     vido: Vido;
     movement: Movement;
 }
@@ -14,17 +13,26 @@ export interface SnapStartArg extends SnapArg {
 export interface SnapEndArg extends SnapArg {
     endTime: Dayjs;
 }
+export interface OnArg {
+    items: Item[];
+    vido: Vido;
+    time: DataChartTime;
+    movement: Movement;
+}
+export interface SnapToTime {
+    start?: (snapStartArgs: SnapStartArg) => Dayjs;
+    end?: (snapEndArgs: SnapEndArg) => Dayjs;
+}
 export interface Options {
     enabled?: boolean;
     className?: string;
     bodyClass?: string;
     bodyClassMoving?: string;
-    onStart?: (items: Item[]) => void;
-    onMove?: (items: Item[]) => void;
-    onEnd?: (items: Item[]) => void;
-    snapStart?: (snapStartArgs: SnapStartArg) => Dayjs;
-    snapEnd?: (snapEndArgs: SnapEndArg) => Dayjs;
+    onStart?: (onArg: OnArg) => boolean;
+    onMove?: (onArg: OnArg) => boolean;
+    onEnd?: (onArg: OnArg) => boolean;
     onRowChange?: (item: Item, newRow: Row) => boolean;
+    snapToTime?: SnapToTime;
 }
 export interface MovementResult {
     horizontal: number;
@@ -36,16 +44,27 @@ export interface Movement {
 }
 export interface PluginData extends Options {
     moving: Item[];
-    lastMoved: Item[];
+    initialItems: Item[];
     movement: Movement;
-    lastPosition: Point;
-    state: 'up' | 'down' | 'move';
+    position: Point;
+    pointerState: 'up' | 'down' | 'move';
+    state: State;
     pointerMoved: boolean;
 }
-export interface MovingTime {
-    time: Dayjs;
-    position: number;
-    width: number;
+export interface MovingTimes {
+    startTime: Dayjs;
+    endTime: Dayjs;
+}
+export declare type State = '' | 'start' | 'end' | 'move';
+export interface Cumulation {
+    start: number;
+    end: number;
+}
+export interface Cumulations {
+    [key: string]: Cumulation;
+}
+export interface RelativeVerticalPosition {
+    [key: string]: number;
 }
 export declare function Plugin(options?: Options): (vidoInstance: Vido) => void;
 //# sourceMappingURL=item-movement.plugin.d.ts.map

@@ -5916,7 +5916,11 @@
 	            rowsAndItems = 0;
 	        }
 	    }));
-	    onDestroy(state.subscribeAll(['config.list.rows.*.parentId', 'config.chart.items.*.rowId'], generateTree, { bulk: true }));
+	    onDestroy(state.subscribeAll(['config.list.rows.*.parentId', 'config.chart.items.*.rowId'], () => {
+	        generateTree();
+	        calculateHeightRelatedThings();
+	        calculateVisibleRowsHeights();
+	    }, { bulk: true }));
 	    function prepareExpanded() {
 	        const configRows = state.get('config.list.rows');
 	        const rowsWithParentsExpanded = api.getRowsFromIds(api.getRowsWithParentsExpanded(state.get('$data.flatTreeMap'), state.get('$data.flatTreeMapById'), configRows), configRows);
@@ -6010,7 +6014,7 @@
 	        multi.done();
 	        update();
 	    }
-	    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items'], generateVisibleRowsAndItems, { bulk: true }));
+	    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items'], generateVisibleRowsAndItems, { bulk: true, ignore: ['config.chart.items.*.$data.detached'] }));
 	    function getLastPageDatesWidth(chartWidth, allDates) {
 	        if (allDates.length === 0)
 	            return 0;
@@ -6255,15 +6259,9 @@
 	        }
 	        return multi;
 	    }
-	    onDestroy(state.subscribeAll([
-	        '$data.list.visibleRows',
-	        'config.scroll.vertical',
-	        'config.chart.items.*.time',
-	        'config.chart.items.*.$data.position',
-	        'config.chart.items.*.$data.time',
-	    ], () => {
+	    onDestroy(state.subscribeAll(['$data.list.visibleRows', 'config.scroll.vertical', 'config.chart.items'], () => {
 	        updateVisibleItems().done();
-	    }));
+	    }, { ignore: ['config.chart.items.*.$data.detached'] }));
 	    function recalculateTimes(reason) {
 	        const chartWidth = state.get('$data.chart.dimensions.width');
 	        if (!chartWidth) {
@@ -8435,7 +8433,7 @@
 	        reuseComponents(rowsComponents, visibleRows, (row) => ({ row }), ItemsRowComponent, false);
 	        update();
 	    }
-	    onDestroy(state.subscribeAll(['$data.list.visibleRows;', 'config.components.ChartTimelineItemsRow', 'config.chart.items'], createRowComponents));
+	    onDestroy(state.subscribeAll(['$data.list.visibleRows;', 'config.components.ChartTimelineItemsRow', 'config.chart.items'], createRowComponents, { ignore: ['config.chart.items.*.$data.detached'] }));
 	    onDestroy(() => {
 	        rowsComponents.forEach((row) => row.destroy());
 	    });
@@ -8507,14 +8505,14 @@
 	        styleMap.style['--row-height'] = props.row.$data.outerHeight + 'px';
 	    };
 	    function updateRow(row) {
-	        itemsPath = `$data.flatTreeMapById.${row.id}.$data.items`;
+	        itemsPath = `config.list.rows.${row.id}.$data.items`;
 	        if (typeof rowSub === 'function') {
 	            rowSub();
 	        }
 	        if (typeof itemsSub === 'function') {
 	            itemsSub();
 	        }
-	        rowSub = state.subscribe('$data.chart', (value) => {
+	        rowSub = state.subscribe('$data.chart.dimensions', (value) => {
 	            if (value === undefined) {
 	                shouldDetach = true;
 	                return update();
@@ -8531,7 +8529,7 @@
 	            reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent);
 	            updateDom();
 	            update();
-	        });
+	        }, { ignore: [`${itemsPath}.$data.detached`] });
 	    }
 	    const componentName = 'chart-timeline-items-row';
 	    let className;
@@ -8539,14 +8537,10 @@
 	        className = api.getClass(componentName);
 	        update();
 	    }));
-	    /**
-	     * On props change
-	     * @param {any} changedProps
-	     */
 	    onChange((changedProps, options) => {
 	        if (options.leave || changedProps.row === undefined) {
 	            shouldDetach = true;
-	            reuseComponents(itemComponents, [], () => ({ row: undefined, item: undefined }), ItemComponent, false);
+	            reuseComponents(itemComponents, [], (item) => ({ row: undefined, item }), ItemComponent, false);
 	            return update();
 	        }
 	        props = changedProps;
@@ -8627,18 +8621,18 @@
 	    let shouldDetach = false;
 	    function updateItem(time = state.get('$data.chart.time')) {
 	        var _a, _b, _c, _d, _e, _f, _g, _h;
-	        props.item.$data.detached = false;
 	        if (leave || time.levels.length === 0 || !time.levels[time.level] || time.levels[time.level].length === 0) {
 	            shouldDetach = true;
-	            props.item.$data.detached = true;
-	            return;
+	            if (props.item)
+	                state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+	            return update();
 	        }
 	        itemLeftPx = props.item.$data.position.actualLeft;
 	        itemWidthPx = props.item.$data.actualWidth;
 	        if (props.item.time.end <= time.leftGlobal || props.item.time.start >= time.rightGlobal || itemWidthPx <= 0) {
 	            shouldDetach = true;
-	            props.item.$data.detached = true;
-	            return;
+	            state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+	            return update();
 	        }
 	        classNameCurrent = className;
 	        if (props.item.time.start < time.leftGlobal) {
@@ -8668,7 +8662,8 @@
 	        styleMap.setStyle({});
 	        const inViewPort = api.isItemInViewport(props.item, time.leftGlobal, time.rightGlobal);
 	        shouldDetach = !inViewPort;
-	        props.item.$data.detached = shouldDetach;
+	        //props.item.$data.detached = shouldDetach;
+	        state.update(`config.chart.items.${props.item.id}.$data.detached`, shouldDetach);
 	        if (inViewPort) {
 	            // update style only when visible to prevent browser's recalculate style
 	            styleMap.style.width = itemWidthPx + 'px';
@@ -8715,24 +8710,24 @@
       </svg>`}
     </div>
   `;
-	    function onPropsChange(changedProps, options) {
+	    onChange(function onPropsChange(changedProps, options) {
 	        if (options.leave || changedProps.row === undefined || changedProps.item === undefined) {
 	            leave = true;
 	            shouldDetach = true;
-	            props.item.$data.detached = true;
+	            if (props.item)
+	                state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+	            //props = changedProps;
 	            return update();
 	        }
 	        else {
 	            shouldDetach = false;
-	            props.item.$data.detached = false;
 	            leave = false;
 	        }
 	        props = changedProps;
 	        actionProps.item = props.item;
 	        actionProps.row = props.row;
 	        updateItem();
-	    }
-	    onChange(onPropsChange);
+	    });
 	    const componentActions = api.getActions(componentName);
 	    let className, labelClassName;
 	    onDestroy(state.subscribe('config.classNames', () => {
@@ -9872,6 +9867,10 @@
 	        this.pathSet = ObjectPath.set;
 	        this.scan = new WildcardObject(this.data, this.options.delimeter, this.options.wildcard);
 	    }
+	    same(newValue, oldValue) {
+	        return ((["number", "string", "undefined", "boolean"].includes(typeof newValue) || newValue === null) &&
+	            oldValue === newValue);
+	    }
 	    getListeners() {
 	        return this.listeners;
 	    }
@@ -10159,10 +10158,6 @@
 	            }
 	        };
 	    }
-	    same(newValue, oldValue) {
-	        return ((["number", "string", "undefined", "boolean"].includes(typeof newValue) || newValue === null) &&
-	            oldValue === newValue);
-	    }
 	    runQueuedListeners() {
 	        if (this.subscribeQueue.length === 0)
 	            return;
@@ -10225,6 +10220,18 @@
 	        Promise.resolve().then(() => this.runQueuedListeners());
 	        return alreadyNotified;
 	    }
+	    shouldIgnore(listener, updatePath) {
+	        if (!listener.options.ignore)
+	            return false;
+	        for (const ignorePath of listener.options.ignore) {
+	            if (updatePath.startsWith(ignorePath))
+	                return true;
+	            const cuttedUpdatePath = this.cutPath(updatePath, ignorePath);
+	            if (this.match(ignorePath, cuttedUpdatePath))
+	                return true;
+	        }
+	        return false;
+	    }
 	    getSubscribedListeners(updatePath, newValue, options, type = "update", originalPath = null) {
 	        options = Object.assign(Object.assign({}, defaultUpdateOptions), options);
 	        const listeners = {};
@@ -10234,11 +10241,13 @@
 	                const params = listenersCollection.paramsInfo
 	                    ? this.getParams(listenersCollection.paramsInfo, updatePath)
 	                    : undefined;
-	                const value = listenersCollection.isRecursive || listenersCollection.isWildcard
-	                    ? () => this.get(this.cutPath(updatePath, listenerPath))
-	                    : () => newValue;
+	                const cutPath = this.cutPath(updatePath, listenerPath);
+	                const traverse = listenersCollection.isRecursive || listenersCollection.isWildcard;
+	                const value = traverse ? () => this.get(cutPath) : () => newValue;
 	                const bulkValue = [{ value, path: updatePath, params }];
 	                for (const listener of listenersCollection.listeners.values()) {
+	                    if (this.shouldIgnore(listener, updatePath))
+	                        continue;
 	                    if (listener.options.bulk) {
 	                        listeners[listenerPath].bulk.push({
 	                            listener,
@@ -10290,14 +10299,14 @@
 	            const currentCuttedPath = this.cutPath(listenerPath, updatePath);
 	            if (this.match(currentCuttedPath, updatePath)) {
 	                const restPath = this.trimPath(listenerPath.substr(currentCuttedPath.length));
-	                const values = new WildcardObject(newValue, this.options.delimeter, this.options.wildcard).get(restPath);
+	                const wildcardNewValues = new WildcardObject(newValue, this.options.delimeter, this.options.wildcard).get(restPath);
 	                const params = listenersCollection.paramsInfo
 	                    ? this.getParams(listenersCollection.paramsInfo, updatePath)
 	                    : undefined;
 	                const bulk = [];
 	                const bulkListeners = {};
-	                for (const currentRestPath in values) {
-	                    const value = () => values[currentRestPath];
+	                for (const currentRestPath in wildcardNewValues) {
+	                    const value = () => wildcardNewValues[currentRestPath];
 	                    const fullPath = [updatePath, currentRestPath].join(this.options.delimeter);
 	                    for (const [listenerId, listener] of listenersCollection.listeners) {
 	                        const eventInfo = {
@@ -10312,6 +10321,8 @@
 	                            params,
 	                            options,
 	                        };
+	                        if (this.shouldIgnore(listener, updatePath))
+	                            continue;
 	                        if (listener.options.bulk) {
 	                            bulk.push({ value, path: fullPath, params });
 	                            bulkListeners[listenerId] = listener;
@@ -10363,16 +10374,16 @@
 	            return listeners;
 	        }
 	        for (const notifyPath of options.only) {
-	            const wildcardScan = new WildcardObject(newValue, this.options.delimeter, this.options.wildcard).get(notifyPath);
+	            const wildcardScanNewValue = new WildcardObject(newValue, this.options.delimeter, this.options.wildcard).get(notifyPath);
 	            listeners[notifyPath] = { bulk: [], single: [] };
-	            for (const wildcardPath in wildcardScan) {
+	            for (const wildcardPath in wildcardScanNewValue) {
 	                const fullPath = updatePath + this.options.delimeter + wildcardPath;
 	                for (const [listenerPath, listenersCollection] of this.listeners) {
 	                    const params = listenersCollection.paramsInfo
 	                        ? this.getParams(listenersCollection.paramsInfo, fullPath)
 	                        : undefined;
 	                    if (this.match(listenerPath, fullPath)) {
-	                        const value = () => wildcardScan[wildcardPath];
+	                        const value = () => wildcardScanNewValue[wildcardPath];
 	                        const bulkValue = [{ value, path: fullPath, params }];
 	                        for (const listener of listenersCollection.listeners.values()) {
 	                            const eventInfo = {
@@ -10387,6 +10398,8 @@
 	                                params,
 	                                options,
 	                            };
+	                            if (this.shouldIgnore(listener, updatePath))
+	                                continue;
 	                            if (listener.options.bulk) {
 	                                if (!listeners[notifyPath].bulk.some((bulkListener) => bulkListener.listener === listener)) {
 	                                    listeners[notifyPath].bulk.push({
@@ -10420,9 +10433,6 @@
 	        return typeof newValue === "object" && newValue !== null;
 	    }
 	    getUpdateValues(oldValue, split, fn) {
-	        if (typeof oldValue === "object" && oldValue !== null) {
-	            Array.isArray(oldValue) ? (oldValue = oldValue.slice()) : (oldValue = Object.assign({}, oldValue));
-	        }
 	        let newValue = fn;
 	        if (typeof fn === "function") {
 	            newValue = fn(this.pathGet(split, this.data));
@@ -10440,14 +10450,15 @@
 	        this.jobsRunning--;
 	    }
 	    wildcardUpdate(updatePath, fn, options = defaultUpdateOptions, multi = false) {
+	        ++this.jobsRunning;
 	        options = Object.assign(Object.assign({}, defaultUpdateOptions), options);
 	        const scanned = this.scan.get(updatePath);
 	        const bulk = {};
 	        for (const path in scanned) {
 	            const split = this.split(path);
-	            const { oldValue, newValue } = this.getUpdateValues(scanned[path], split, fn);
-	            if (!this.same(newValue, oldValue))
-	                bulk[path] = newValue;
+	            const { newValue } = this.getUpdateValues(scanned[path], split, fn);
+	            this.pathSet(split, newValue, this.data);
+	            bulk[path] = newValue;
 	        }
 	        const groupedListenersPack = [];
 	        const waitingPaths = [];
@@ -10462,7 +10473,6 @@
 	                    groupedListenersPack.push(this.getNestedListeners(path, newValue, options, "update", updatePath));
 	            }
 	            options.debug && this.options.log("Wildcard update", { path, newValue });
-	            this.pathSet(this.split(path), newValue, this.data);
 	            waitingPaths.push(path);
 	        }
 	        if (multi) {
@@ -10503,10 +10513,10 @@
 	            }
 	            return result;
 	        }
-	        ++this.jobsRunning;
 	        if (this.isWildcard(updatePath)) {
 	            return this.wildcardUpdate(updatePath, fnOrValue, options, multi);
 	        }
+	        ++this.jobsRunning;
 	        const split = this.split(updatePath);
 	        const { oldValue, newValue } = this.getUpdateValues(this.pathGet(split, this.data), split, fnOrValue);
 	        if (options.debug) {
@@ -10532,14 +10542,18 @@
 	        if (options.only.length) {
 	            --this.jobsRunning;
 	            if (multi) {
-	                return () => this.updateNotifyOnly(updatePath, newValue, options);
+	                return () => {
+	                    this.updateNotifyOnly(updatePath, newValue, options);
+	                };
 	            }
 	            this.updateNotifyOnly(updatePath, newValue, options);
 	            return newValue;
 	        }
 	        if (multi) {
 	            --this.jobsRunning;
-	            return () => this.updateNotify(updatePath, newValue, options);
+	            return () => {
+	                this.updateNotify(updatePath, newValue, options);
+	            };
 	        }
 	        this.updateNotify(updatePath, newValue, options);
 	        --this.jobsRunning;

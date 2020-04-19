@@ -1,5 +1,5 @@
 import { Time } from './time';
-import DeepState from 'deep-state-observer';
+import DeepState from '../../../deep-state-observer';
 import dayjs from 'dayjs';
 import { Config, DataChartTime, ScrollTypeHorizontal, Row, Item, Vido, ScrollTypeVertical } from '../gstc';
 export declare function getClass(name: string): string;
@@ -10,7 +10,7 @@ export declare function stateFromConfig(userConfig: Config): any;
 export declare const publicApi: {
     name: string;
     stateFromConfig: typeof stateFromConfig;
-    mergeDeep: typeof import("../../../vido/helpers").mergeDeep;
+    merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
     date(time: any): dayjs.Dayjs;
     setPeriod(period: dayjs.OpUnitType): number;
     dayjs: typeof dayjs;
@@ -36,7 +36,7 @@ export declare class Api {
     constructor(state: DeepState);
     setVido(Vido: Vido): void;
     log(...args: any[]): void;
-    mergeDeep: typeof import("../../../vido/helpers").mergeDeep;
+    mergeDeep: typeof import("@neuronet.io/vido/helpers").mergeDeep;
     getClass: typeof getClass;
     allActions: any[];
     getActions(name: string): any;

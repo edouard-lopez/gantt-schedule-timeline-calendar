@@ -1,9 +1,9 @@
 import 'pepjs';
-import { Api, stateFromConfig } from './api/api';
+import { Api } from './api/api';
 import { vido, lithtml, ComponentInstance } from '@neuronet.io/vido/vido.d';
 import { Dayjs, OpUnitType } from 'dayjs';
 import { Properties as CSSProps } from 'csstype';
-import DeepState from 'deep-state-observer';
+import DeepState from '../../deep-state-observer/index';
 export declare type Vido = vido<DeepState, Api>;
 export interface RowDataPosition {
     top: number;
@@ -441,7 +441,7 @@ export interface Config {
     locale?: Locale;
     utcMode?: boolean;
     usageStatistics?: boolean;
-    clone?: (obj: object) => object;
+    merge?: (target: object, source: object) => object;
 }
 export interface TreeMapData {
     parents: string[];
@@ -506,8 +506,8 @@ declare function GSTC(options: GSTCOptions): GSTCResult;
 declare namespace GSTC {
     var api: {
         name: string;
-        stateFromConfig: typeof stateFromConfig;
-        mergeDeep: typeof import("../../vido/helpers").mergeDeep;
+        stateFromConfig: typeof import("./api/api").stateFromConfig;
+        merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
         date(time: any): Dayjs;
         setPeriod(period: OpUnitType): number;
         dayjs: typeof import("dayjs");

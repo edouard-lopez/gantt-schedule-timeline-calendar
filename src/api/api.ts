@@ -10,7 +10,9 @@
 import defaultConfigFn from '../default-config';
 import { Time } from './time';
 import State from 'deep-state-observer';
+//import State from '../../../deep-state-observer';
 import DeepState from 'deep-state-observer';
+//import DeepState from '../../../deep-state-observer';
 import dayjs from 'dayjs';
 import {
   Config,

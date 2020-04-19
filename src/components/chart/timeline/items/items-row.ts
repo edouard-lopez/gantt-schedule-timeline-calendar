@@ -72,14 +72,14 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
   };
 
   function updateRow(row) {
-    itemsPath = `$data.flatTreeMapById.${row.id}.$data.items`;
+    itemsPath = `config.list.rows.${row.id}.$data.items`;
     if (typeof rowSub === 'function') {
       rowSub();
     }
     if (typeof itemsSub === 'function') {
       itemsSub();
     }
-    rowSub = state.subscribe('$data.chart', (value) => {
+    rowSub = state.subscribe('$data.chart.dimensions', (value) => {
       if (value === undefined) {
         shouldDetach = true;
         return update();
@@ -87,16 +87,20 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
       updateDom();
       update();
     });
-    itemsSub = state.subscribe(itemsPath, (value) => {
-      if (value === undefined) {
-        shouldDetach = true;
-        reuseComponents(itemComponents, [], (item) => ({ row, item }), ItemComponent);
-        return update();
-      }
-      reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent);
-      updateDom();
-      update();
-    });
+    itemsSub = state.subscribe(
+      itemsPath,
+      (value) => {
+        if (value === undefined) {
+          shouldDetach = true;
+          reuseComponents(itemComponents, [], (item) => ({ row, item }), ItemComponent);
+          return update();
+        }
+        reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent);
+        updateDom();
+        update();
+      },
+      { ignore: [`${itemsPath}.$data.detached`] }
+    );
   }
 
   const componentName = 'chart-timeline-items-row';
@@ -108,14 +112,10 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
     })
   );
 
-  /**
-   * On props change
-   * @param {any} changedProps
-   */
   onChange((changedProps: Props, options) => {
     if (options.leave || changedProps.row === undefined) {
       shouldDetach = true;
-      reuseComponents(itemComponents, [], () => ({ row: undefined, item: undefined }), ItemComponent, false);
+      reuseComponents(itemComponents, [], (item) => ({ row: undefined, item }), ItemComponent, false);
       return update();
     }
     props = changedProps;

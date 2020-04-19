@@ -63,18 +63,17 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
   let shouldDetach = false;
 
   function updateItem(time: DataChartTime = state.get('$data.chart.time')) {
-    props.item.$data.detached = false;
     if (leave || time.levels.length === 0 || !time.levels[time.level] || time.levels[time.level].length === 0) {
       shouldDetach = true;
-      props.item.$data.detached = true;
-      return;
+      if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+      return update();
     }
     itemLeftPx = props.item.$data.position.actualLeft;
     itemWidthPx = props.item.$data.actualWidth;
     if (props.item.time.end <= time.leftGlobal || props.item.time.start >= time.rightGlobal || itemWidthPx <= 0) {
       shouldDetach = true;
-      props.item.$data.detached = true;
-      return;
+      state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+      return update();
     }
     classNameCurrent = className;
     if (props.item.time.start < time.leftGlobal) {
@@ -102,7 +101,8 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
     styleMap.setStyle({});
     const inViewPort = api.isItemInViewport(props.item, time.leftGlobal, time.rightGlobal);
     shouldDetach = !inViewPort;
-    props.item.$data.detached = shouldDetach;
+    //props.item.$data.detached = shouldDetach;
+    state.update(`config.chart.items.${props.item.id}.$data.detached`, shouldDetach);
     if (inViewPort) {
       // update style only when visible to prevent browser's recalculate style
       styleMap.style.width = itemWidthPx + 'px';
@@ -146,23 +146,23 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
       </svg>`}
     </div>
   `;
-  function onPropsChange(changedProps, options) {
+
+  onChange(function onPropsChange(changedProps, options) {
     if (options.leave || changedProps.row === undefined || changedProps.item === undefined) {
       leave = true;
       shouldDetach = true;
-      props.item.$data.detached = true;
+      if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
+      //props = changedProps;
       return update();
     } else {
       shouldDetach = false;
-      props.item.$data.detached = false;
       leave = false;
     }
     props = changedProps;
     actionProps.item = props.item;
     actionProps.row = props.row;
     updateItem();
-  }
-  onChange(onPropsChange);
+  });
 
   const componentActions = api.getActions(componentName);
   let className, labelClassName;

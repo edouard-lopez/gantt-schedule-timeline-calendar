@@ -164,7 +164,15 @@ export default function Main(vido: Vido, props = {}) {
     })
   );
   onDestroy(
-    state.subscribeAll(['config.list.rows.*.parentId', 'config.chart.items.*.rowId'], generateTree, { bulk: true })
+    state.subscribeAll(
+      ['config.list.rows.*.parentId', 'config.chart.items.*.rowId'],
+      () => {
+        generateTree();
+        calculateHeightRelatedThings();
+        calculateVisibleRowsHeights();
+      },
+      { bulk: true }
+    )
   );
 
   function prepareExpanded() {
@@ -281,7 +289,7 @@ export default function Main(vido: Vido, props = {}) {
     state.subscribeAll(
       ['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items'],
       generateVisibleRowsAndItems,
-      { bulk: true }
+      { bulk: true, ignore: ['config.chart.items.*.$data.detached'] }
     )
   );
 
@@ -546,16 +554,11 @@ export default function Main(vido: Vido, props = {}) {
 
   onDestroy(
     state.subscribeAll(
-      [
-        '$data.list.visibleRows',
-        'config.scroll.vertical',
-        'config.chart.items.*.time',
-        'config.chart.items.*.$data.position',
-        'config.chart.items.*.$data.time',
-      ],
+      ['$data.list.visibleRows', 'config.scroll.vertical', 'config.chart.items'],
       () => {
         updateVisibleItems().done();
-      }
+      },
+      { ignore: ['config.chart.items.*.$data.detached'] }
     )
   );
 

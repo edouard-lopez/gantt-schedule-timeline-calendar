@@ -46,7 +46,7 @@ export interface PluginData extends Options {
     moving: Item[];
     initialItems: Item[];
     movement: Movement;
-    lastPosition: Point;
+    position: Point;
     pointerState: 'up' | 'down' | 'move';
     state: State;
     pointerMoved: boolean;
@@ -62,6 +62,9 @@ export interface Cumulation {
 }
 export interface Cumulations {
     [key: string]: Cumulation;
+}
+export interface RelativeVerticalPosition {
+    [key: string]: number;
 }
 export declare function Plugin(options?: Options): (vidoInstance: Vido) => void;
 //# sourceMappingURL=item-movement.plugin.d.ts.map

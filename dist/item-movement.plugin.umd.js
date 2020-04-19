@@ -29,7 +29,7 @@
   }
   const pluginPath = 'config.plugin.ItemMovement';
   function gemerateEmptyPluginData(options) {
-      return Object.assign({ moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', lastPosition: { x: 0, y: 0 }, movement: {
+      return Object.assign({ moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
               px: { horizontal: 0, vertical: 0 },
               time: 0,
           }, onStart() {
@@ -56,6 +56,7 @@
       constructor(vido) {
           this.onDestroy = [];
           this.cumulations = {};
+          this.relativeVerticalPosition = {};
           this.vido = vido;
           this.api = vido.api;
           this.state = vido.state;
@@ -126,15 +127,49 @@
           });
           return { startTime, endTime };
       }
-      moveItemVertically(item) {
-          return item;
+      findRowAtViewPosition(y, currentRow) {
+          const visibleRows = this.state.get('$data.list.visibleRows');
+          for (const row of visibleRows) {
+              const rowBottom = row.$data.position.viewTop + row.$data.outerHeight;
+              if (row.$data.position.viewTop <= y && rowBottom >= y)
+                  return row;
+          }
+          return currentRow;
+      }
+      getItemViewTop(item) {
+          const rows = this.state.get('config.list.rows');
+          const row = rows[item.rowId];
+          return row.$data.position.viewTop + item.$data.position.actualTop;
+      }
+      saveItemsRelativeVerticalPosition() {
+          for (const item of this.data.moving) {
+              const relativePosition = this.data.position.y - this.getItemViewTop(item);
+              this.setItemRelativeVerticalPosition(item, relativePosition);
+          }
+      }
+      setItemRelativeVerticalPosition(item, relativePosition) {
+          this.relativeVerticalPosition[item.id] = relativePosition;
+      }
+      getItemRelativeVerticalPosition(item) {
+          return this.relativeVerticalPosition[item.id];
+      }
+      moveItemVertically(item, multi) {
+          const rows = this.state.get('config.list.rows');
+          const currentRow = rows[item.rowId];
+          const relativePosition = this.getItemRelativeVerticalPosition(item);
+          const itemShouldBeAt = this.data.position.y + relativePosition;
+          const newRow = this.findRowAtViewPosition(itemShouldBeAt, currentRow);
+          if (this.data.onRowChange(item, newRow)) {
+              multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
+          }
+          return multi;
       }
       moveItems() {
           const time = this.state.get('$data.chart.time');
           let multi = this.state.multi();
           for (let item of this.data.moving) {
               const newItemTimes = this.getItemMovingTimes(item, time);
-              item = this.moveItemVertically(item);
+              multi = this.moveItemVertically(item, multi);
               multi = multi
                   .update(`config.chart.items.${item.id}.time`, (itemTime) => {
                   itemTime.start = newItemTimes.startTime.valueOf();
@@ -161,7 +196,8 @@
       onStart() {
           this.clearCumulationsForItems();
           document.body.classList.add(this.data.bodyClassMoving);
-          this.data.lastPosition = Object.assign({}, this.selection.currentPosition);
+          this.data.position = Object.assign({}, this.selection.currentPosition);
+          this.saveItemsRelativeVerticalPosition();
       }
       onEnd() {
           document.body.classList.remove(this.data.bodyClassMoving);
@@ -229,10 +265,10 @@
                   this.onEnd();
                   break;
           }
-          this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.lastPosition.x;
-          this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.lastPosition.y;
-          this.data.lastPosition.x = this.selection.currentPosition.x;
-          this.data.lastPosition.y = this.selection.currentPosition.y;
+          this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
+          this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
+          this.data.position.x = this.selection.currentPosition.x;
+          this.data.position.y = this.selection.currentPosition.y;
           const onArg = {
               items: this.data.moving,
               vido: this.vido,

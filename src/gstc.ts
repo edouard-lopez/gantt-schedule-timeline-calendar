@@ -10,7 +10,7 @@
 import 'pepjs';
 import Vido from '@neuronet.io/vido/vido';
 //import Vido from '../../vido/vido';
-import { publicApi, Api, stateFromConfig, prepareState } from './api/api';
+import { publicApi, Api } from './api/api';
 
 import { vido, lithtml, ComponentInstance } from '@neuronet.io/vido/vido.d';
 import { Dayjs, OpUnitType } from 'dayjs';

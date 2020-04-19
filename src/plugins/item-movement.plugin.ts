@@ -9,7 +9,7 @@
  */
 
 import { PluginData as SelectionPluginData } from './selection.plugin';
-import { Item, DataChartTime, Scroll, DataChartDimensions, ItemTime, Vido, ItemDataTime, Row } from '../gstc';
+import { Item, DataChartTime, Scroll, DataChartDimensions, ItemTime, Vido, ItemDataTime, Row, Rows } from '../gstc';
 import { ITEM, Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
 import { Api } from '../api/api';
@@ -68,7 +68,7 @@ export interface PluginData extends Options {
   moving: Item[];
   initialItems: Item[];
   movement: Movement;
-  lastPosition: Point;
+  position: Point;
   pointerState: 'up' | 'down' | 'move';
   state: State;
   pointerMoved: boolean;
@@ -90,6 +90,10 @@ export interface Cumulations {
   [key: string]: Cumulation;
 }
 
+export interface RelativeVerticalPosition {
+  [key: string]: number;
+}
+
 function prepareOptions(options: Options): Options {
   return {
     enabled: true,
@@ -109,7 +113,7 @@ function gemerateEmptyPluginData(options: Options): PluginData {
     pointerState: 'up',
     pointerMoved: false,
     state: '',
-    lastPosition: { x: 0, y: 0 },
+    position: { x: 0, y: 0 },
     movement: {
       px: { horizontal: 0, vertical: 0 },
       time: 0,
@@ -147,6 +151,7 @@ class ItemMovement {
   private data: PluginData;
   private cumulations: Cumulations = {};
   private merge: (target: object, source: object) => object;
+  private relativeVerticalPosition: RelativeVerticalPosition = {};
 
   constructor(vido: Vido) {
     this.vido = vido;
@@ -225,8 +230,46 @@ class ItemMovement {
     return { startTime, endTime };
   }
 
-  private moveItemVertically(item: Item): Item {
-    return item;
+  private findRowAtViewPosition(y: number, currentRow: Row): Row {
+    const visibleRows: Row[] = this.state.get('$data.list.visibleRows');
+    for (const row of visibleRows) {
+      const rowBottom = row.$data.position.viewTop + row.$data.outerHeight;
+      if (row.$data.position.viewTop <= y && rowBottom >= y) return row;
+    }
+    return currentRow;
+  }
+
+  private getItemViewTop(item: Item): number {
+    const rows: Rows = this.state.get('config.list.rows');
+    const row = rows[item.rowId];
+    return row.$data.position.viewTop + item.$data.position.actualTop;
+  }
+
+  private saveItemsRelativeVerticalPosition() {
+    for (const item of this.data.moving) {
+      const relativePosition = this.data.position.y - this.getItemViewTop(item);
+      this.setItemRelativeVerticalPosition(item, relativePosition);
+    }
+  }
+
+  private setItemRelativeVerticalPosition(item: Item, relativePosition: number) {
+    this.relativeVerticalPosition[item.id] = relativePosition;
+  }
+
+  private getItemRelativeVerticalPosition(item: Item): number {
+    return this.relativeVerticalPosition[item.id];
+  }
+
+  private moveItemVertically(item: Item, multi) {
+    const rows: Rows = this.state.get('config.list.rows');
+    const currentRow: Row = rows[item.rowId];
+    const relativePosition = this.getItemRelativeVerticalPosition(item);
+    const itemShouldBeAt = this.data.position.y + relativePosition;
+    const newRow = this.findRowAtViewPosition(itemShouldBeAt, currentRow);
+    if (this.data.onRowChange(item, newRow)) {
+      multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
+    }
+    return multi;
   }
 
   private moveItems() {
@@ -234,7 +277,7 @@ class ItemMovement {
     let multi = this.state.multi();
     for (let item of this.data.moving) {
       const newItemTimes = this.getItemMovingTimes(item, time);
-      item = this.moveItemVertically(item);
+      multi = this.moveItemVertically(item, multi);
       multi = multi
         .update(`config.chart.items.${item.id}.time`, (itemTime: ItemTime) => {
           itemTime.start = newItemTimes.startTime.valueOf();
@@ -263,7 +306,8 @@ class ItemMovement {
   private onStart() {
     this.clearCumulationsForItems();
     document.body.classList.add(this.data.bodyClassMoving);
-    this.data.lastPosition = { ...this.selection.currentPosition };
+    this.data.position = { ...this.selection.currentPosition };
+    this.saveItemsRelativeVerticalPosition();
   }
 
   private onEnd() {
@@ -339,10 +383,10 @@ class ItemMovement {
         break;
     }
 
-    this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.lastPosition.x;
-    this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.lastPosition.y;
-    this.data.lastPosition.x = this.selection.currentPosition.x;
-    this.data.lastPosition.y = this.selection.currentPosition.y;
+    this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
+    this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
+    this.data.position.x = this.selection.currentPosition.x;
+    this.data.position.y = this.selection.currentPosition.y;
 
     const onArg: OnArg = {
       items: this.data.moving,
