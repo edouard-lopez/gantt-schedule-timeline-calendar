@@ -33,6 +33,7 @@ export interface Options {
     onEnd?: (onArg: OnArg) => boolean;
     onRowChange?: (item: Item, newRow: Row) => boolean;
     snapToTime?: SnapToTime;
+    debug?: boolean;
 }
 export interface MovementResult {
     horizontal: number;

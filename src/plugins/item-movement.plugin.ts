@@ -52,6 +52,7 @@ export interface Options {
   onEnd?: (onArg: OnArg) => boolean;
   onRowChange?: (item: Item, newRow: Row) => boolean;
   snapToTime?: SnapToTime;
+  debug?: boolean;
 }
 
 export interface MovementResult {
@@ -107,8 +108,9 @@ function prepareOptions(options: Options): Options {
 
 const pluginPath = 'config.plugin.ItemMovement';
 
-function gemerateEmptyPluginData(options: Options): PluginData {
-  return {
+function generateEmptyPluginData(options: Options): PluginData {
+  const result: PluginData = {
+    debug: false,
     moving: [],
     initialItems: [],
     pointerState: 'up',
@@ -142,6 +144,13 @@ function gemerateEmptyPluginData(options: Options): PluginData {
     },
     ...options,
   };
+  if (options.snapToTime) {
+    result.snapToTime = {
+      ...result.snapToTime,
+      ...options.snapToTime,
+    };
+  }
+  return result;
 }
 
 class ItemMovement {
@@ -279,6 +288,7 @@ class ItemMovement {
   private moveItems() {
     const time: DataChartTime = this.state.get('$data.chart.time');
     let multi = this.state.multi();
+    if (this.data.debug) console.log('moveItems', this.data.moving);
     for (let item of this.data.moving) {
       const newItemTimes = this.getItemMovingTimes(item, time);
       multi = this.moveItemVertically(item, multi);
@@ -322,6 +332,7 @@ class ItemMovement {
 
   private restoreInitialItems() {
     let multi = this.state.multi();
+    if (this.data.debug) console.log('restoreInitialItems', [...this.data.initialItems]);
     for (const item of this.data.initialItems) {
       multi = multi.update(`config.chart.items.${item.id}`, item);
     }
@@ -331,12 +342,16 @@ class ItemMovement {
   }
 
   private canMove(state: State, onArg: OnArg): boolean {
+    if (this.data.debug) console.log('canMove', state, onArg);
     switch (state) {
       case 'start':
+        if (this.data.debug) console.log('canMove start', state, onArg, this.data.onStart);
         return this.data.onStart(onArg);
       case 'move':
+        if (this.data.debug) console.log('canMove move', state, onArg, this.data.onMove);
         return this.data.onMove(onArg);
       case 'end':
+        if (this.data.debug) console.log('canMove end', state, onArg, this.data.onEnd);
         return this.data.onEnd(onArg);
     }
     return true;
@@ -421,7 +436,7 @@ class ItemMovement {
 
 export function Plugin(options: Options = {}) {
   return function initialize(vidoInstance: Vido) {
-    vidoInstance.state.update(pluginPath, gemerateEmptyPluginData(prepareOptions(options)));
+    vidoInstance.state.update(pluginPath, generateEmptyPluginData(prepareOptions(options)));
     new ItemMovement(vidoInstance);
   };
 }

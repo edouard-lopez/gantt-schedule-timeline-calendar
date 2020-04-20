@@ -28,8 +28,8 @@
       return Object.assign({ enabled: true, className: '', bodyClass: 'gstc-item-movement', bodyClassMoving: 'gstc-items-moving' }, options);
   }
   const pluginPath = 'config.plugin.ItemMovement';
-  function gemerateEmptyPluginData(options) {
-      return Object.assign({ moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
+  function generateEmptyPluginData(options) {
+      const result = Object.assign({ debug: false, moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
               px: { horizontal: 0, vertical: 0 },
               time: 0,
           }, lastMovement: { x: 0, y: 0 }, onStart() {
@@ -51,6 +51,10 @@
                   return endTime.endOf(time.period);
               },
           } }, options);
+      if (options.snapToTime) {
+          result.snapToTime = Object.assign(Object.assign({}, result.snapToTime), options.snapToTime);
+      }
+      return result;
   }
   class ItemMovement {
       constructor(vido) {
@@ -169,6 +173,8 @@
       moveItems() {
           const time = this.state.get('$data.chart.time');
           let multi = this.state.multi();
+          if (this.data.debug)
+              console.log('moveItems', this.data.moving);
           for (let item of this.data.moving) {
               const newItemTimes = this.getItemMovingTimes(item, time);
               multi = this.moveItemVertically(item, multi);
@@ -208,6 +214,8 @@
       }
       restoreInitialItems() {
           let multi = this.state.multi();
+          if (this.data.debug)
+              console.log('restoreInitialItems', [...this.data.initialItems]);
           for (const item of this.data.initialItems) {
               multi = multi.update(`config.chart.items.${item.id}`, item);
           }
@@ -216,12 +224,20 @@
           this.updateData();
       }
       canMove(state, onArg) {
+          if (this.data.debug)
+              console.log('canMove', state, onArg);
           switch (state) {
               case 'start':
+                  if (this.data.debug)
+                      console.log('canMove start', state, onArg, this.data.onStart);
                   return this.data.onStart(onArg);
               case 'move':
+                  if (this.data.debug)
+                      console.log('canMove move', state, onArg, this.data.onMove);
                   return this.data.onMove(onArg);
               case 'end':
+                  if (this.data.debug)
+                      console.log('canMove end', state, onArg, this.data.onEnd);
                   return this.data.onEnd(onArg);
           }
           return true;
@@ -298,7 +314,7 @@
   }
   function Plugin(options = {}) {
       return function initialize(vidoInstance) {
-          vidoInstance.state.update(pluginPath, gemerateEmptyPluginData(prepareOptions(options)));
+          vidoInstance.state.update(pluginPath, generateEmptyPluginData(prepareOptions(options)));
           new ItemMovement(vidoInstance);
       };
   }
