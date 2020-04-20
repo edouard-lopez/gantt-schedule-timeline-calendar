@@ -418,19 +418,19 @@ class ItemMovement {
       movement: this.data.movement,
       time: this.state.get('$data.chart.time'),
     };
-    if (
-      this.data.lastMovement.x !== this.data.movement.px.horizontal ||
-      this.data.lastMovement.y !== this.data.movement.px.vertical
-    ) {
-      if (this.canMove(this.data.state, onArg)) {
-        this.moveItems();
-      } else {
-        this.data.pointerState = 'up';
-        if (this.data.state === 'end') {
-          this.restoreInitialItems();
-        }
+    // if (
+    //   this.data.lastMovement.x !== this.data.movement.px.horizontal ||
+    //   this.data.lastMovement.y !== this.data.movement.px.vertical
+    // ) {
+    if (this.canMove(this.data.state, onArg)) {
+      this.moveItems();
+    } else {
+      this.data.pointerState = 'up';
+      if (this.data.state === 'end') {
+        this.restoreInitialItems();
       }
     }
+    // }
     this.updateData();
   }
 }
