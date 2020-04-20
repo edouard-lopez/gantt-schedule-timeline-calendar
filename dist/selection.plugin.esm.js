@@ -160,15 +160,22 @@ class SelectionPlugin {
         let selected;
         let automaticallySelected = [];
         const move = this.poitnerData.events.move;
-        const multi = move && this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
+        const multi = this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
         const linked = this.collectLinkedItems(item, [item]);
-        if (multi) {
-            selected = [...new Set([...this.data.selected[ITEM], ...linked]).values()];
+        if (this.data.selected[ITEM].find((selectedItem) => selectedItem.id === item.id)) {
+            // if we want to start movement or something - just return currently selected
+            selected = this.data.selected[ITEM];
+            automaticallySelected = this.data.automaticallySelected[ITEM];
         }
         else {
-            selected = linked;
+            if (multi) {
+                selected = [...new Set([...this.data.selected[ITEM], ...linked]).values()];
+            }
+            else {
+                selected = linked;
+            }
+            automaticallySelected = linked.filter((currentItem) => currentItem.id !== item.id);
         }
-        automaticallySelected = linked.filter((currentItem) => currentItem.id !== item.id);
         return { selected, automaticallySelected };
     }
     isItemVerticallyInsideArea(itemData, area) {
