@@ -111,12 +111,14 @@ export default function Main(vido: Vido, props = {}) {
   }
   onDestroy(state.subscribe('$data.list.columns.resizer.active', resizerActiveChange));
 
+  let emptyValuesDone = false;
   function generateTree(bulk = null, eventInfo = null) {
     if (eventInfo && eventInfo.type === 'subscribe') return;
     const rows = state.get('config.list.rows');
-    api.fillEmptyRowValues(rows);
+    if (!emptyValuesDone) api.fillEmptyRowValues(rows);
     const items = state.get('config.chart.items');
-    api.prepareItems(items);
+    if (!emptyValuesDone) api.prepareItems(items);
+    emptyValuesDone = true;
     state.update('$data.treeMap', api.makeTreeMap(rows, items));
     update();
   }
@@ -153,8 +155,8 @@ export default function Main(vido: Vido, props = {}) {
       ['config.list.rows.*.parentId', 'config.chart.items.*.rowId'],
       () => {
         generateTree();
-        //calculateHeightRelatedThings();
-        //calculateVisibleRowsHeights();
+        calculateHeightRelatedThings();
+        calculateVisibleRowsHeights();
       },
       { bulk: true }
     )
@@ -163,16 +165,15 @@ export default function Main(vido: Vido, props = {}) {
   function prepareExpanded() {
     const configRows: Rows = state.get('config.list.rows');
     const rowsWithParentsExpanded: Row[] = api.getRowsWithParentsExpanded(configRows);
-    state.update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded);
-  }
-  onDestroy(state.subscribeAll(['config.list.rows.*.expanded', '$data.treeMap;'], prepareExpanded, { bulk: true }));
-
-  function rowsWithParentsExpandedAndRowsHeight() {
-    let rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
-    rowsHeight = api.recalculateRowsHeights(rowsWithParentsExpanded);
+    rowsHeight = api.recalculateRowsHeightsAndFixOverlappingItems(rowsWithParentsExpanded);
     const verticalArea: number = state.get('config.scroll.vertical.area');
-    rowsWithParentsExpanded = api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
-    state.update('$data.list.rowsHeight', rowsHeight);
+    api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
+    state
+      .multi()
+      .update('$data.list.rowsHeight', rowsHeight)
+      .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
+      .done();
+    update();
   }
   onDestroy(
     state.subscribeAll(
@@ -183,7 +184,7 @@ export default function Main(vido: Vido, props = {}) {
         'config.list.rows.*.height',
         'config.scroll.vertical.area',
       ],
-      rowsWithParentsExpandedAndRowsHeight,
+      prepareExpanded,
       { bulk: true }
     )
   );

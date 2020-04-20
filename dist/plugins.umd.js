@@ -390,8 +390,10 @@
           const relativePosition = this.getItemRelativeVerticalPosition(item);
           const itemShouldBeAt = this.data.position.y + relativePosition;
           const newRow = this.findRowAtViewPosition(itemShouldBeAt, currentRow);
-          if (this.data.onRowChange(item, newRow)) {
-              multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
+          if (newRow.id !== item.rowId) {
+              if (this.data.onRowChange(item, newRow)) {
+                  multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
+              }
           }
           return multi;
       }
@@ -401,17 +403,19 @@
           for (let item of this.data.moving) {
               const newItemTimes = this.getItemMovingTimes(item, time);
               multi = this.moveItemVertically(item, multi);
-              multi = multi
-                  .update(`config.chart.items.${item.id}.time`, (itemTime) => {
-                  itemTime.start = newItemTimes.startTime.valueOf();
-                  itemTime.end = newItemTimes.endTime.valueOf();
-                  return itemTime;
-              })
-                  .update(`config.chart.items.${item.id}.$data.time`, (dataTime) => {
-                  dataTime.startDate = newItemTimes.startTime;
-                  dataTime.endDate = newItemTimes.endTime;
-                  return dataTime;
-              });
+              if (newItemTimes.startTime.valueOf() !== item.time.start || newItemTimes.endTime.valueOf() !== item.time.end) {
+                  multi = multi
+                      .update(`config.chart.items.${item.id}.time`, (itemTime) => {
+                      itemTime.start = newItemTimes.startTime.valueOf();
+                      itemTime.end = newItemTimes.endTime.valueOf();
+                      return itemTime;
+                  })
+                      .update(`config.chart.items.${item.id}.$data.time`, (dataTime) => {
+                      dataTime.startDate = newItemTimes.startTime;
+                      dataTime.endDate = newItemTimes.endTime;
+                      return dataTime;
+                  });
+              }
           }
           multi.done();
       }
@@ -1760,20 +1764,17 @@
           }
           const rightStyleMap = this.getRightStyleMap(item, visible);
           const leftStyleMap = this.getLeftStyleMap(item, visible);
-          const onLeftPointerDown = {
-              handleEvent: (ev) => this.onLeftPointerDown(ev),
-          };
           const onRightPointerDown = {
               handleEvent: (ev) => this.onRightPointerDown(ev),
           };
-          const leftHandle = this
-              .html `<div class=${this.leftClassName} style=${leftStyleMap} @pointerdown=${onLeftPointerDown}>${this.data.content}</div>`;
+          /*const leftHandle = this
+            .html`<div class=${this.leftClassName} style=${leftStyleMap} @pointerdown=${onLeftPointerDown}>${this.data.content}</div>`;
+          const rightHandle = this
+            .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
+          return this.html`${visible ? leftHandle : null}${oldContent}${visible ? rightHandle : null}`;*/
           const rightHandle = this
               .html `<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
-          return this.html `${visible ? leftHandle : null}${oldContent}${visible ? rightHandle : null}`;
-          /*const rightHandle = this
-            .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
-          return this.html`${oldContent}${visible ? rightHandle : null}`;*/
+          return this.html `${oldContent}${visible ? rightHandle : null}`;
       }
       getWrapper(oldWrapper) {
           if (!this.oldWrapper) {

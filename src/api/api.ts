@@ -304,7 +304,7 @@ export class Api {
     return row.$data.outerHeight;
   }
 
-  recalculateRowsHeights(rows: Row[]): number {
+  recalculateRowsHeightsAndFixOverlappingItems(rows: Row[]): number {
     let top = 0;
     for (const row of rows) {
       this.recalculateRowHeight(row);

@@ -1240,20 +1240,17 @@
             }
             const rightStyleMap = this.getRightStyleMap(item, visible);
             const leftStyleMap = this.getLeftStyleMap(item, visible);
-            const onLeftPointerDown = {
-                handleEvent: (ev) => this.onLeftPointerDown(ev),
-            };
             const onRightPointerDown = {
                 handleEvent: (ev) => this.onRightPointerDown(ev),
             };
-            const leftHandle = this
-                .html `<div class=${this.leftClassName} style=${leftStyleMap} @pointerdown=${onLeftPointerDown}>${this.data.content}</div>`;
+            /*const leftHandle = this
+              .html`<div class=${this.leftClassName} style=${leftStyleMap} @pointerdown=${onLeftPointerDown}>${this.data.content}</div>`;
+            const rightHandle = this
+              .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
+            return this.html`${visible ? leftHandle : null}${oldContent}${visible ? rightHandle : null}`;*/
             const rightHandle = this
                 .html `<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
-            return this.html `${visible ? leftHandle : null}${oldContent}${visible ? rightHandle : null}`;
-            /*const rightHandle = this
-              .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
-            return this.html`${oldContent}${visible ? rightHandle : null}`;*/
+            return this.html `${oldContent}${visible ? rightHandle : null}`;
         }
         getWrapper(oldWrapper) {
             if (!this.oldWrapper) {

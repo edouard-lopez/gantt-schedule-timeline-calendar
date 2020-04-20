@@ -100,7 +100,7 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
         updateDom();
         update();
       },
-      { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }
+      { ignore: ['config.chart.items.*.$data.detached'] }
     );
   }
 

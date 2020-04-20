@@ -5901,13 +5901,17 @@
 	        update();
 	    }
 	    onDestroy(state.subscribe('$data.list.columns.resizer.active', resizerActiveChange));
+	    let emptyValuesDone = false;
 	    function generateTree(bulk = null, eventInfo = null) {
 	        if (eventInfo && eventInfo.type === 'subscribe')
 	            return;
 	        const rows = state.get('config.list.rows');
-	        api.fillEmptyRowValues(rows);
+	        if (!emptyValuesDone)
+	            api.fillEmptyRowValues(rows);
 	        const items = state.get('config.chart.items');
-	        api.prepareItems(items);
+	        if (!emptyValuesDone)
+	            api.prepareItems(items);
+	        emptyValuesDone = true;
 	        state.update('$data.treeMap', api.makeTreeMap(rows, items));
 	        update();
 	    }
@@ -5937,21 +5941,21 @@
 	    }));
 	    onDestroy(state.subscribeAll(['config.list.rows.*.parentId', 'config.chart.items.*.rowId'], () => {
 	        generateTree();
-	        //calculateHeightRelatedThings();
-	        //calculateVisibleRowsHeights();
+	        calculateHeightRelatedThings();
+	        calculateVisibleRowsHeights();
 	    }, { bulk: true }));
 	    function prepareExpanded() {
 	        const configRows = state.get('config.list.rows');
 	        const rowsWithParentsExpanded = api.getRowsWithParentsExpanded(configRows);
-	        state.update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded);
-	    }
-	    onDestroy(state.subscribeAll(['config.list.rows.*.expanded', '$data.treeMap;'], prepareExpanded, { bulk: true }));
-	    function rowsWithParentsExpandedAndRowsHeight() {
-	        let rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
-	        rowsHeight = api.recalculateRowsHeights(rowsWithParentsExpanded);
+	        rowsHeight = api.recalculateRowsHeightsAndFixOverlappingItems(rowsWithParentsExpanded);
 	        const verticalArea = state.get('config.scroll.vertical.area');
-	        rowsWithParentsExpanded = api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
-	        state.update('$data.list.rowsHeight', rowsHeight);
+	        api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
+	        state
+	            .multi()
+	            .update('$data.list.rowsHeight', rowsHeight)
+	            .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
+	            .done();
+	        update();
 	    }
 	    onDestroy(state.subscribeAll([
 	        'config.list.rows.*.expanded',
@@ -5959,7 +5963,7 @@
 	        'config.chart.items.*.rowId',
 	        'config.list.rows.*.height',
 	        'config.scroll.vertical.area',
-	    ], rowsWithParentsExpandedAndRowsHeight, { bulk: true }));
+	    ], prepareExpanded, { bulk: true }));
 	    function calculateHeightRelatedThings() {
 	        const rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
 	        const rowsHeight = state.get('$data.list.rowsHeight');
@@ -8556,7 +8560,7 @@
 	            reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent, false);
 	            updateDom();
 	            update();
-	        }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] });
+	        }, { ignore: ['config.chart.items.*.$data.detached'] });
 	    }
 	    const componentName = 'chart-timeline-items-row';
 	    let className;
@@ -10648,7 +10652,10 @@
 	            waitingPaths.push(path);
 	        }
 	        if (multi) {
-	            return () => this.wildcardNotify(groupedListenersPack, waitingPaths);
+	            const self = this;
+	            return function () {
+	                return self.wildcardNotify(groupedListenersPack, waitingPaths);
+	            };
 	        }
 	        this.wildcardNotify(groupedListenersPack, waitingPaths);
 	    }
@@ -10681,7 +10688,9 @@
 	                this.runUpdateQueue();
 	            });
 	            if (multi) {
-	                return () => result;
+	                return function () {
+	                    return result;
+	                };
 	            }
 	            return result;
 	        }
@@ -10700,7 +10709,9 @@
 	        if (this.same(newValue, oldValue)) {
 	            --this.jobsRunning;
 	            if (multi)
-	                return () => newValue;
+	                return function () {
+	                    return newValue;
+	                };
 	            return newValue;
 	        }
 	        this.pathSet(split, newValue, this.data);
@@ -10708,14 +10719,15 @@
 	        if (options.only === null) {
 	            --this.jobsRunning;
 	            if (multi)
-	                return () => { };
+	                return function () { };
 	            return newValue;
 	        }
 	        if (options.only.length) {
 	            --this.jobsRunning;
 	            if (multi) {
-	                return () => {
-	                    this.updateNotifyOnly(updatePath, newValue, options);
+	                const self = this;
+	                return function () {
+	                    return self.updateNotifyOnly(updatePath, newValue, options);
 	                };
 	            }
 	            this.updateNotifyOnly(updatePath, newValue, options);
@@ -10723,8 +10735,9 @@
 	        }
 	        if (multi) {
 	            --this.jobsRunning;
-	            return () => {
-	                this.updateNotify(updatePath, newValue, options);
+	            const self = this;
+	            return function () {
+	                return self.updateNotify(updatePath, newValue, options);
 	            };
 	        }
 	        this.updateNotify(updatePath, newValue, options);
@@ -11046,7 +11059,7 @@
 	        row.$data.outerHeight = row.$data.actualHeight + row.gap.top + row.gap.bottom;
 	        return row.$data.outerHeight;
 	    }
-	    recalculateRowsHeights(rows) {
+	    recalculateRowsHeightsAndFixOverlappingItems(rows) {
 	        let top = 0;
 	        for (const row of rows) {
 	            this.recalculateRowHeight(row);

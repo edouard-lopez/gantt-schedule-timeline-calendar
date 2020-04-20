@@ -365,14 +365,14 @@ class ItemResizing {
       handleEvent: (ev) => this.onRightPointerDown(ev),
       //capture: true,
     };
-    const leftHandle = this
+    /*const leftHandle = this
       .html`<div class=${this.leftClassName} style=${leftStyleMap} @pointerdown=${onLeftPointerDown}>${this.data.content}</div>`;
     const rightHandle = this
       .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
-    return this.html`${visible ? leftHandle : null}${oldContent}${visible ? rightHandle : null}`;
-    /*const rightHandle = this
+    return this.html`${visible ? leftHandle : null}${oldContent}${visible ? rightHandle : null}`;*/
+    const rightHandle = this
       .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
-    return this.html`${oldContent}${visible ? rightHandle : null}`;*/
+    return this.html`${oldContent}${visible ? rightHandle : null}`;
   }
 
   public getWrapper(oldWrapper: Wrapper): Wrapper {

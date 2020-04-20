@@ -50,7 +50,7 @@ export declare class Api {
     itemOverlapsWithOthers(item: Item, items: Item[]): boolean;
     fixOverlappedItems(rowItems: Item[]): void;
     recalculateRowHeight(row: Row): number;
-    recalculateRowsHeights(rows: Row[]): number;
+    recalculateRowsHeightsAndFixOverlappingItems(rows: Row[]): number;
     recalculateRowsPercents(rows: Row[], verticalAreaHeight: number): Row[];
     generateParents(rows: any, parentName?: string): {};
     fastTree(rowParents: any, node: any, parents?: any[]): any;
