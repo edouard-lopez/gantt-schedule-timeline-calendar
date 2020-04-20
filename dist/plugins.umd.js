@@ -515,13 +515,13 @@
               // do nothing because movement was rejected
               return;
           }
-          if (this.data.debug)
-              console.log('state', this.data.pointerState);
           this.data.pointerState = this.selection.pointerState;
           this.data.moving = [...this.selection.selected[ITEM]];
           if (this.data.state === 'start') {
               this.data.initialItems = this.data.moving.map((item) => this.merge({}, item));
           }
+          if (this.data.debug)
+              console.log('state', this.data.pointerState);
           switch (this.data.state) {
               case 'start':
                   this.onStart();
