@@ -116,9 +116,11 @@ class TimelinePointer {
   }
 
   public destroy() {
-    this.element.removeEventListener('pointerdown', this.pointerDown);
-    document.removeEventListener('pointerup', this.pointerUp);
-    document.removeEventListener('pointermove', this.pointerMove);
+    if (this && this.element) {
+      this.element.removeEventListener('pointerdown', this.pointerDown);
+      document.removeEventListener('pointerup', this.pointerUp);
+      document.removeEventListener('pointermove', this.pointerMove);
+    }
   }
 
   private updateData() {

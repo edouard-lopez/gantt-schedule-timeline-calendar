@@ -66,9 +66,11 @@
           this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
       }
       destroy() {
-          this.element.removeEventListener('pointerdown', this.pointerDown);
-          document.removeEventListener('pointerup', this.pointerUp);
-          document.removeEventListener('pointermove', this.pointerMove);
+          if (this && this.element) {
+              this.element.removeEventListener('pointerdown', this.pointerDown);
+              document.removeEventListener('pointerup', this.pointerUp);
+              document.removeEventListener('pointermove', this.pointerMove);
+          }
       }
       updateData() {
           this.state.update(pluginPath, () => (Object.assign({}, this.data)));
