@@ -5940,6 +5940,8 @@ function Main(vido, props = {}) {
     }, { bulk: true }));
     function prepareExpandedCalculateRowHeightsAndFixOverlapped() {
         const configRows = state.get('config.list.rows');
+        if (!configRows)
+            return;
         const rowsWithParentsExpanded = api.getRowsWithParentsExpanded(configRows);
         rowsHeight = api.recalculateRowsHeightsAndFixOverlappingItems(rowsWithParentsExpanded);
         const verticalArea = state.get('config.scroll.vertical.area');
@@ -11111,6 +11113,8 @@ class Api {
     getRowsWithParentsExpanded(rows) {
         const rowsWithParentsExpanded = [];
         next: for (const rowId in rows) {
+            if (!rows[rowId].$data || !rows[rowId].$data.parents)
+                return [];
             for (const parentId of rows[rowId].$data.parents) {
                 const parent = rows[parentId];
                 if (!parent || !parent.expanded) {

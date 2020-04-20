@@ -164,6 +164,7 @@ export default function Main(vido: Vido, props = {}) {
 
   function prepareExpandedCalculateRowHeightsAndFixOverlapped() {
     const configRows: Rows = state.get('config.list.rows');
+    if (!configRows) return;
     const rowsWithParentsExpanded: Row[] = api.getRowsWithParentsExpanded(configRows);
     rowsHeight = api.recalculateRowsHeightsAndFixOverlappingItems(rowsWithParentsExpanded);
     const verticalArea: number = state.get('config.scroll.vertical.area');

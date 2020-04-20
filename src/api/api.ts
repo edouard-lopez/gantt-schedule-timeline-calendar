@@ -371,6 +371,7 @@ export class Api {
   getRowsWithParentsExpanded(rows: Rows) {
     const rowsWithParentsExpanded = [];
     next: for (const rowId in rows) {
+      if (!rows[rowId].$data || !rows[rowId].$data.parents) return [];
       for (const parentId of rows[rowId].$data.parents) {
         const parent = rows[parentId];
         if (!parent || !parent.expanded) {
