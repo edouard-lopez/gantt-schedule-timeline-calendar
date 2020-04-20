@@ -11110,6 +11110,8 @@
 	    makeTreeMap(rows, items) {
 	        const itemParents = this.generateParents(items, 'rowId');
 	        for (const rowId in rows) {
+	            if (!rows[rowId].$data)
+	                return;
 	            rows[rowId].$data.items = itemParents[rowId] !== undefined ? Object.values(itemParents[rowId]) : [];
 	        }
 	        const rowParents = this.generateParents(rows);
