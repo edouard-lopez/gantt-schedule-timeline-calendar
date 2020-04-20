@@ -96,11 +96,18 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
           reuseComponents(itemComponents, [], () => null, ItemComponent, false);
           return update();
         }
-        reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent, false);
+        const items = state.get('config.chart.items');
+        reuseComponents(
+          itemComponents,
+          value,
+          (item) => ({ row, item: item ? items[item.id] : item }),
+          ItemComponent,
+          false
+        );
         updateDom();
         update();
-      },
-      { ignore: ['config.chart.items.*.$data.detached'] }
+      }
+      //{ ignore: ['config.chart.items.*.$data.detached'] }
     );
   }
 
@@ -116,7 +123,7 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
   onChange(function onPropsChange(changedProps: Props, options) {
     if (options.leave || changedProps.row === undefined) {
       shouldDetach = true;
-      reuseComponents(itemComponents, [], (item) => ({ row: undefined, item: undefined }), ItemComponent, false);
+      reuseComponents(itemComponents, [], (item) => null, ItemComponent, false);
       return update();
     }
     props = changedProps;

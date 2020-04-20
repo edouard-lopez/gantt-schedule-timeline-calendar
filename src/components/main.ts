@@ -114,6 +114,7 @@ export default function Main(vido: Vido, props = {}) {
   let emptyValuesDone = false;
   function generateTree(bulk = null, eventInfo = null) {
     if (eventInfo && eventInfo.type === 'subscribe') return;
+    if (bulk === 'reload') emptyValuesDone = false;
     const rows = state.get('config.list.rows');
     if (!emptyValuesDone) api.fillEmptyRowValues(rows);
     const items = state.get('config.chart.items');
@@ -127,7 +128,7 @@ export default function Main(vido: Vido, props = {}) {
   onDestroy(
     state.subscribeAll(['config.chart.items;', 'config.list.rows;'], (bulk, eventInfo) => {
       ++rowsAndItems;
-      generateTree();
+      generateTree('reload');
       prepareExpandedCalculateRowHeightsAndFixOverlapped();
       calculateHeightRelatedThings();
       calculateVisibleRowsHeights();
@@ -275,7 +276,7 @@ export default function Main(vido: Vido, props = {}) {
   }
   onDestroy(
     state.subscribeAll(
-      ['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'],
+      ['$data.list.rowsWithParentsExpanded', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'],
       generateVisibleRowsAndItems,
       { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }
     )
@@ -522,8 +523,9 @@ export default function Main(vido: Vido, props = {}) {
         position.right === right &&
         position.actualTop === actualTop &&
         position.viewTop === viewTop
-      )
+      ) {
         continue; // prevent infinite loop
+      }
       multi = multi.update(`config.chart.items.${item.id}.$data`, function ($data: ItemData) {
         $data.position.left = left;
         $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
@@ -542,7 +544,7 @@ export default function Main(vido: Vido, props = {}) {
 
   onDestroy(
     state.subscribeAll(
-      ['$data.list.visibleRows', 'config.scroll.vertical', 'config.chart.items'],
+      ['$data.list.visibleRows;', '$data.chart.visibleItems;', 'config.scroll.vertical', 'config.chart.items'],
       () => {
         updateVisibleItems().done();
       },

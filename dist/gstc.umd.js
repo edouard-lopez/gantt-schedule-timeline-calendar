@@ -5905,6 +5905,8 @@
 	    function generateTree(bulk = null, eventInfo = null) {
 	        if (eventInfo && eventInfo.type === 'subscribe')
 	            return;
+	        if (bulk === 'reload')
+	            emptyValuesDone = false;
 	        const rows = state.get('config.list.rows');
 	        if (!emptyValuesDone)
 	            api.fillEmptyRowValues(rows);
@@ -5918,7 +5920,7 @@
 	    let rowsAndItems = 0;
 	    onDestroy(state.subscribeAll(['config.chart.items;', 'config.list.rows;'], (bulk, eventInfo) => {
 	        ++rowsAndItems;
-	        generateTree();
+	        generateTree('reload');
 	        prepareExpandedCalculateRowHeightsAndFixOverlapped();
 	        calculateHeightRelatedThings();
 	        calculateVisibleRowsHeights();
@@ -6045,7 +6047,7 @@
 	            state.update('$data.chart.visibleItems', visibleItems);
 	        update();
 	    }
-	    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded;', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'], generateVisibleRowsAndItems, { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }));
+	    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'], generateVisibleRowsAndItems, { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }));
 	    function getLastPageDatesWidth(chartWidth, allDates) {
 	        if (allDates.length === 0)
 	            return 0;
@@ -6273,8 +6275,9 @@
 	            if (position.left === left &&
 	                position.right === right &&
 	                position.actualTop === actualTop &&
-	                position.viewTop === viewTop)
+	                position.viewTop === viewTop) {
 	                continue; // prevent infinite loop
+	            }
 	            multi = multi.update(`config.chart.items.${item.id}.$data`, function ($data) {
 	                $data.position.left = left;
 	                $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
@@ -6290,7 +6293,7 @@
 	        }
 	        return multi;
 	    }
-	    onDestroy(state.subscribeAll(['$data.list.visibleRows', 'config.scroll.vertical', 'config.chart.items'], () => {
+	    onDestroy(state.subscribeAll(['$data.list.visibleRows;', '$data.chart.visibleItems;', 'config.scroll.vertical', 'config.chart.items'], () => {
 	        updateVisibleItems().done();
 	    }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
 	    function recalculateTimes(reason) {
@@ -8559,10 +8562,13 @@
 	                reuseComponents(itemComponents, [], () => null, ItemComponent, false);
 	                return update();
 	            }
-	            reuseComponents(itemComponents, value, (item) => ({ row, item }), ItemComponent, false);
+	            const items = state.get('config.chart.items');
+	            reuseComponents(itemComponents, value, (item) => ({ row, item: item ? items[item.id] : item }), ItemComponent, false);
 	            updateDom();
 	            update();
-	        }, { ignore: ['config.chart.items.*.$data.detached'] });
+	        }
+	        //{ ignore: ['config.chart.items.*.$data.detached'] }
+	        );
 	    }
 	    const componentName = 'chart-timeline-items-row';
 	    let className;
@@ -8573,7 +8579,7 @@
 	    onChange(function onPropsChange(changedProps, options) {
 	        if (options.leave || changedProps.row === undefined) {
 	            shouldDetach = true;
-	            reuseComponents(itemComponents, [], (item) => ({ row: undefined, item: undefined }), ItemComponent, false);
+	            reuseComponents(itemComponents, [], (item) => null, ItemComponent, false);
 	            return update();
 	        }
 	        props = changedProps;
