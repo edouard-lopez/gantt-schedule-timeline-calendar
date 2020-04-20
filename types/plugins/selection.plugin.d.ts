@@ -46,6 +46,7 @@ export interface PluginData extends Options {
     selectionAreaGlobal: Area;
     selected: Selection;
     selecting: Selection;
+    automaticallySelected: Selection;
     events: PointerEvents;
     targetType: ITEM_TYPE | CELL_TYPE | '';
 }

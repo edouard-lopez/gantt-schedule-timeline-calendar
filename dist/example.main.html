@@ -126,8 +126,10 @@
             .valueOf();
         items[id].label = GSTC.api.date(items[id].time.start).format('YYYY-MM-DD HH:mm');
       }
-      items['1'].linkedWith = ['3'];
-      items['1'].label = 'linked with 3';
+      items['1'].linkedWith = ['3', '2'];
+      items['1'].label = 'linked with 3 and 2';
+      items['2'].time.start = items['1'].time.start;
+      items['2'].time.end = items['1'].time.end;
       items['3'].time.start = items['1'].time.start;
       items['3'].time.end = items['1'].time.end;
 
@@ -166,17 +168,6 @@
         },
       };
 
-      class ResizingItemClass {
-        update(element, data) {
-          const hasClass = element.classList.contains('resizing');
-          if (data.item.isResizing && !hasClass) {
-            element.classList.add('resizing');
-          } else if (!data.item.isResizing && hasClass) {
-            element.classList.remove('resizing');
-          }
-        }
-      }
-
       let selectionApi;
       const config = {
         plugins: [
@@ -209,7 +200,7 @@
           ItemResizing.Plugin(),
           CalendarScroll.Plugin(),
         ],
-        height: 723,
+        height: 523,
         list: {
           rows,
           columns,
@@ -218,9 +209,6 @@
           items,
         },
         classNames: {},
-        actions: {
-          'chart-timeline-items-row-item': [ResizingItemClass],
-        },
       };
 
       GSTC.api.stateFromConfigExperimental(config).then((GSTCState) => {

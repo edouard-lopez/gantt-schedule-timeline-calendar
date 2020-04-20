@@ -97,6 +97,7 @@ export interface PluginData extends Options {
   selectionAreaGlobal: Area;
   selected: Selection;
   selecting: Selection;
+  automaticallySelected: Selection;
   events: PointerEvents;
   targetType: ITEM_TYPE | CELL_TYPE | '';
 }
@@ -120,6 +121,10 @@ function generateEmptyData(options: Options): PluginData {
       [CELL]: [],
     },
     selected: {
+      [ITEM]: [],
+      [CELL]: [],
+    },
+    automaticallySelected: {
       [ITEM]: [],
       [CELL]: [],
     },
@@ -259,19 +264,19 @@ class SelectionPlugin {
     return current;
   }
 
-  private getSelected(item: Item): Item[] {
+  private getSelected(item: Item): { selected: Item[]; automaticallySelected: Item[] } {
     let selected: Item[];
-    if (this.data.selected[ITEM].find((selectedItem) => selectedItem.id === item.id)) {
-      selected = this.data.selected[ITEM];
+    let automaticallySelected: Item[] = [];
+    const move = this.poitnerData.events.move;
+    const multi = move && this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
+    const linked = this.collectLinkedItems(item, [item]);
+    if (multi) {
+      selected = [...new Set([...this.data.selected[ITEM], ...linked]).values()];
     } else {
-      const move = this.poitnerData.events.move;
-      if (this.data.multiKey && this.modKeyPressed(this.data.multiKey, move)) {
-        selected = [...new Set([...this.data.selected[ITEM], ...this.collectLinkedItems(item, [item])]).values()];
-      } else {
-        selected = this.collectLinkedItems(item, [item]);
-      }
+      selected = linked;
     }
-    return selected;
+    automaticallySelected = linked.filter((currentItem) => currentItem.id !== item.id);
+    return { selected, automaticallySelected };
   }
 
   private isItemVerticallyInsideArea(itemData: ItemData, area: Area): boolean {
@@ -298,11 +303,12 @@ class SelectionPlugin {
     );
   }
 
-  private getItemsUnderSelectionArea(areaLocal: Area): Item[] {
+  private getItemsUnderSelectionArea(areaLocal: Area): { selected: Item[]; automaticallySelected: Item[] } {
     const visibleItems: Item[] = this.state.get('$data.chart.visibleItems');
     const move = this.poitnerData.events.move;
     const multi = move && this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
     let selected = multi ? [...this.data.selected[ITEM]] : [];
+    const automaticallySelected = multi ? [...this.data.automaticallySelected[ITEM]] : [];
     for (const item of visibleItems) {
       const itemData = item.$data;
       if (
@@ -312,11 +318,14 @@ class SelectionPlugin {
         if (!selected.find((selectedItem) => selectedItem.id === item.id)) selected.push(item);
         const linked = this.collectLinkedItems(item, [item]);
         for (const linkedItem of linked) {
-          if (!selected.find((selectedItem) => selectedItem.id === linkedItem.id)) selected.push(linkedItem);
+          if (!selected.find((selectedItem) => selectedItem.id === linkedItem.id)) {
+            selected.push(linkedItem);
+            automaticallySelected.push(linkedItem);
+          }
         }
       }
     }
-    return selected;
+    return { selected, automaticallySelected };
   }
 
   private deselectItems() {
@@ -334,16 +343,17 @@ class SelectionPlugin {
     this.data.isSelecting = true;
     this.data.selectionAreaLocal = this.getSelectionAreaLocal();
     this.data.selectionAreaGlobal = this.translateAreaLocalToGlobal(this.data.selectionAreaLocal);
-    const selectedItems = this.getItemsUnderSelectionArea(this.data.selectionAreaLocal);
-    if (selectedItems.length === 0) {
+    const { selected, automaticallySelected } = this.getItemsUnderSelectionArea(this.data.selectionAreaLocal);
+    this.data.automaticallySelected[ITEM] = automaticallySelected;
+    if (selected.length === 0) {
       this.state.update(`config.chart.items.*.selected`, false);
       this.data.selected[ITEM].length = 0;
       return;
     }
-    this.data.selected[ITEM] = selectedItems;
+    this.data.selected[ITEM] = selected;
     let multi = this.state.multi();
     multi = multi.update(`config.chart.items.*.selected`, false);
-    for (const item of selectedItems) {
+    for (const item of selected) {
       multi = multi.update(`config.chart.items.${item.id}.selected`, true);
     }
     multi.done();
@@ -357,7 +367,9 @@ class SelectionPlugin {
     this.data.initialPosition = this.poitnerData.initialPosition;
     if (!this.canSelect()) return;
     const item: Item = this.poitnerData.targetData;
-    this.data.selected[ITEM] = this.getSelected(item);
+    const { selected, automaticallySelected } = this.getSelected(item);
+    this.data.selected[ITEM] = selected;
+    this.data.automaticallySelected[ITEM] = automaticallySelected;
     let multi = this.state.multi();
     multi = multi.update(`config.chart.items.*.selected`, false);
     for (const item of this.data.selected[ITEM]) {

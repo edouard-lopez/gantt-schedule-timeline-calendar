@@ -128,7 +128,7 @@ export default function Main(vido: Vido, props = {}) {
     state.subscribeAll(['config.chart.items;', 'config.list.rows;'], (bulk, eventInfo) => {
       ++rowsAndItems;
       generateTree();
-      prepareExpanded();
+      prepareExpandedCalculateRowHeightsAndFixOverlapped();
       calculateHeightRelatedThings();
       calculateVisibleRowsHeights();
       state.update('config.scroll', (scroll: Scroll) => {
@@ -162,7 +162,7 @@ export default function Main(vido: Vido, props = {}) {
     )
   );
 
-  function prepareExpanded() {
+  function prepareExpandedCalculateRowHeightsAndFixOverlapped() {
     const configRows: Rows = state.get('config.list.rows');
     const rowsWithParentsExpanded: Row[] = api.getRowsWithParentsExpanded(configRows);
     rowsHeight = api.recalculateRowsHeightsAndFixOverlappingItems(rowsWithParentsExpanded);
@@ -184,7 +184,7 @@ export default function Main(vido: Vido, props = {}) {
         'config.list.rows.*.height',
         'config.scroll.vertical.area',
       ],
-      prepareExpanded,
+      prepareExpandedCalculateRowHeightsAndFixOverlapped,
       { bulk: true }
     )
   );
