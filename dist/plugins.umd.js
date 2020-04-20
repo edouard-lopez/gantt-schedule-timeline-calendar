@@ -515,6 +515,8 @@
               // do nothing because movement was rejected
               return;
           }
+          if (this.data.debug)
+              console.log('state', this.data.pointerState);
           this.data.pointerState = this.selection.pointerState;
           this.data.moving = [...this.selection.selected[ITEM]];
           if (this.data.state === 'start') {
