@@ -13,8 +13,16 @@ export interface Point {
     y: number;
 }
 export declare type PointerState = 'up' | 'down' | 'move';
-export interface PluginData {
-    enabled: boolean;
+export interface CaptureEvents {
+    up?: boolean;
+    down?: boolean;
+    move?: boolean;
+}
+export interface Options {
+    enabled?: boolean;
+    captureEvents?: CaptureEvents;
+}
+export interface PluginData extends Options {
     isMoving: boolean;
     pointerState: PointerState;
     currentTarget: HTMLElement | null;
@@ -25,7 +33,5 @@ export interface PluginData {
     initialPosition: Point;
     currentPosition: Point;
 }
-export declare function Plugin(options?: {
-    enabled: boolean;
-}): (vidoInstance: Vido) => () => void;
+export declare function Plugin(options: Options): (vidoInstance: Vido) => () => void;
 //# sourceMappingURL=timeline-pointer.plugin.d.ts.map

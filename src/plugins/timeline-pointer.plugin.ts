@@ -9,7 +9,7 @@
  */
 
 import DeepState from 'deep-state-observer';
-import { Api } from '../api/api';
+import { Api, stateFromConfig } from '../api/api';
 import { Vido } from '../gstc';
 
 export const CELL = 'chart-timeline-grid-row-cell';
@@ -30,8 +30,18 @@ export interface Point {
 
 export type PointerState = 'up' | 'down' | 'move';
 
-export interface PluginData {
-  enabled: boolean;
+export interface CaptureEvents {
+  up?: boolean;
+  down?: boolean;
+  move?: boolean;
+}
+
+export interface Options {
+  enabled?: boolean;
+  captureEvents?: CaptureEvents;
+}
+
+export interface PluginData extends Options {
   isMoving: boolean;
   pointerState: PointerState;
   currentTarget: HTMLElement | null;
@@ -43,148 +53,164 @@ export interface PluginData {
   currentPosition: Point;
 }
 
-export function Plugin(options = { enabled: true }) {
-  let vido: Vido, api: Api, state: DeepState;
-  const pluginPath = 'config.plugin.TimelinePointer';
+function generateEmptyData(options: Options): PluginData {
+  const result: PluginData = {
+    enabled: true,
+    isMoving: false,
+    pointerState: 'up',
+    currentTarget: null,
+    realTarget: null,
+    targetType: '',
+    targetData: null,
+    captureEvents: {
+      down: false,
+      up: false,
+      move: false,
+    },
+    initialPosition: { x: 0, y: 0 },
+    currentPosition: { x: 0, y: 0 },
+    events: {
+      down: null,
+      move: null,
+      up: null,
+    },
+  };
+  if (options.captureEvents) {
+    result.captureEvents = {
+      ...result.captureEvents,
+      ...options.captureEvents,
+    };
+  }
+  return result;
+}
 
-  const classNames = {
+const pluginPath = 'config.plugin.TimelinePointer';
+
+class TimelinePointer {
+  private element: HTMLElement;
+  private vido: Vido;
+  private api: Api;
+  private state: DeepState;
+  private data: PluginData;
+  private unsub = [];
+  private classNames = {
     cell: '',
     item: '',
   };
 
-  function generateEmptyData(): PluginData {
-    return {
-      enabled: options.enabled,
-      isMoving: false,
-      pointerState: 'up',
-      currentTarget: null,
-      realTarget: null,
-      targetType: '',
-      targetData: null,
-      initialPosition: { x: 0, y: 0 },
-      currentPosition: { x: 0, y: 0 },
-      events: {
-        down: null,
-        move: null,
-        up: null,
-      },
-    };
+  constructor(options: Options, vido: Vido) {
+    this.vido = vido;
+    this.api = vido.api;
+    this.state = vido.state;
+    this.element = this.state.get(`$data.elements.chart-timeline`);
+    this.pointerDown = this.pointerDown.bind(this);
+    this.pointerMove = this.pointerMove.bind(this);
+    this.pointerUp = this.pointerUp.bind(this);
+    this.data = generateEmptyData(options);
+    this.classNames.cell = this.api.getClass(CELL);
+    this.classNames.item = this.api.getClass(ITEM);
+    this.element.addEventListener('pointerdown', this.pointerDown, this.data.captureEvents.down);
+    document.addEventListener('pointerup', this.pointerUp, this.data.captureEvents.up);
+    document.addEventListener('pointermove', this.pointerMove, this.data.captureEvents.move);
+    this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
   }
 
-  let chartTimelineElement: HTMLElement;
+  public destroy() {
+    this.element.removeEventListener('pointerdown', this.pointerDown);
+    document.removeEventListener('pointerup', this.pointerUp);
+    document.removeEventListener('pointermove', this.pointerMove);
+  }
 
-  class TimelinePointerAction {
-    private data: PluginData;
-    private unsub = [];
+  private updateData() {
+    this.state.update(pluginPath, () => ({ ...this.data }));
+  }
 
-    constructor(element) {
-      this.pointerDown = this.pointerDown.bind(this);
-      this.pointerMove = this.pointerMove.bind(this);
-      this.pointerUp = this.pointerUp.bind(this);
-      this.data = generateEmptyData();
-      element.addEventListener('pointerdown', this.pointerDown);
-      document.addEventListener('pointerup', this.pointerUp);
-      document.addEventListener('pointermove', this.pointerMove);
-      this.unsub.push(state.subscribe(pluginPath, (value) => (this.data = value)));
+  private getRealTarget(ev: PointerEvent) {
+    let realTarget: HTMLElement = (ev.target as HTMLElement).closest('.' + this.classNames.item) as HTMLElement;
+    if (realTarget) {
+      return realTarget;
     }
-
-    public destroy(element) {
-      element.removeEventListener('pointerdown', this.pointerDown);
-      document.removeEventListener('pointerup', this.pointerUp);
-      document.removeEventListener('pointermove', this.pointerMove);
+    realTarget = (ev.target as HTMLElement).closest('.' + this.classNames.cell) as HTMLElement;
+    if (realTarget) {
+      return realTarget;
     }
+    return null;
+  }
 
-    private updateData() {
-      state.update(pluginPath, () => ({ ...this.data }));
+  private getRealPosition(ev: PointerEvent): Point {
+    const pos = { x: 0, y: 0 };
+    if (this.element) {
+      const bounding = this.element.getBoundingClientRect();
+      pos.x = ev.x - bounding.x;
+      pos.y = ev.y - bounding.y;
     }
+    return pos;
+  }
 
-    private getRealTarget(ev: PointerEvent) {
-      let realTarget: HTMLElement = (ev.target as HTMLElement).closest('.' + classNames.item) as HTMLElement;
-      if (realTarget) {
-        return realTarget;
-      }
-      realTarget = (ev.target as HTMLElement).closest('.' + classNames.cell) as HTMLElement;
-      if (realTarget) {
-        return realTarget;
-      }
-      return null;
-    }
-
-    getRealPosition(ev: PointerEvent): Point {
-      const pos = { x: 0, y: 0 };
-      if (chartTimelineElement) {
-        const bounding = chartTimelineElement.getBoundingClientRect();
-        pos.x = ev.x - bounding.x;
-        pos.y = ev.y - bounding.y;
-      }
-      return pos;
-    }
-
-    private pointerDown(ev: PointerEvent) {
-      if (!this.data.enabled) return;
-      this.data.pointerState = 'down';
-      this.data.currentTarget = ev.target as HTMLElement;
-      this.data.realTarget = this.getRealTarget(ev);
-      if (this.data.realTarget) {
-        if (this.data.realTarget.classList.contains(classNames.item)) {
-          this.data.targetType = ITEM;
-          // @ts-ignore
-          this.data.targetData = this.data.realTarget.vido.item;
-        } else if (this.data.realTarget.classList.contains(classNames.cell)) {
-          this.data.targetType = CELL;
-          // @ts-ignore
-          this.data.targetData = this.data.realTarget.vido;
-        } else {
-          this.data.targetType = '';
-        }
+  private pointerDown(ev: PointerEvent) {
+    if (!this.data.enabled) return;
+    this.data.pointerState = 'down';
+    this.data.currentTarget = ev.target as HTMLElement;
+    this.data.realTarget = this.getRealTarget(ev);
+    if (this.data.realTarget) {
+      if (this.data.realTarget.classList.contains(this.classNames.item)) {
+        this.data.targetType = ITEM;
+        // @ts-ignore
+        this.data.targetData = this.data.realTarget.vido.item;
+      } else if (this.data.realTarget.classList.contains(this.classNames.cell)) {
+        this.data.targetType = CELL;
+        // @ts-ignore
+        this.data.targetData = this.data.realTarget.vido;
       } else {
         this.data.targetType = '';
-        this.data.targetData = null;
       }
-      this.data.isMoving = !!this.data.realTarget;
-      this.data.events.down = ev;
-      this.data.events.move = ev;
-      const realPosition = this.getRealPosition(ev);
-      this.data.initialPosition = realPosition;
-      this.data.currentPosition = realPosition;
-      this.updateData();
+    } else {
+      this.data.targetType = '';
+      this.data.targetData = null;
     }
-
-    private pointerUp(ev: PointerEvent) {
-      if (!this.data.enabled) return;
-      this.data.pointerState = 'up';
-      this.data.isMoving = false;
-      this.data.events.up = ev;
-      this.data.currentPosition = this.getRealPosition(ev);
-      this.updateData();
-    }
-
-    private pointerMove(ev: PointerEvent) {
-      if (!this.data.enabled || !this.data.isMoving) return;
-      this.data.pointerState = 'move';
-      this.data.events.move = ev;
-      this.data.currentPosition = this.getRealPosition(ev);
-      this.updateData();
-    }
+    this.data.isMoving = !!this.data.realTarget;
+    this.data.events.down = ev;
+    this.data.events.move = ev;
+    const realPosition = this.getRealPosition(ev);
+    this.data.initialPosition = realPosition;
+    this.data.currentPosition = realPosition;
+    this.updateData();
   }
 
-  return function initialize(vidoInstance: Vido) {
-    vido = vidoInstance;
-    api = vido.api;
-    state = vido.state;
-    classNames.cell = api.getClass(CELL);
-    classNames.item = api.getClass(ITEM);
-    const unsub = state.subscribe('$data.elements.chart-timeline', (el) => (chartTimelineElement = el));
-    state.update('config.actions.chart-timeline', (timelineActions) => {
-      timelineActions.push(TimelinePointerAction);
-      return timelineActions;
-    });
-    state.update(pluginPath, (data) => {
-      return generateEmptyData();
-    });
+  private pointerUp(ev: PointerEvent) {
+    if (!this.data.enabled) return;
+    this.data.pointerState = 'up';
+    this.data.isMoving = false;
+    this.data.events.up = ev;
+    this.data.currentPosition = this.getRealPosition(ev);
+    this.updateData();
+  }
 
+  private pointerMove(ev: PointerEvent) {
+    if (!this.data.enabled || !this.data.isMoving) return;
+    this.data.pointerState = 'move';
+    this.data.events.move = ev;
+    this.data.currentPosition = this.getRealPosition(ev);
+    this.updateData();
+  }
+}
+
+export function Plugin(options: Options) {
+  return function initialize(vidoInstance: Vido) {
+    const defaultData = generateEmptyData(options);
+    // for other plugins that are initialized before elements are saved
+    vidoInstance.state.update(pluginPath, defaultData);
+
+    let timelinePointerDestroy;
+    const unsub = vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement: HTMLElement) => {
+      if (timelineElement) {
+        const timelinePointer = new TimelinePointer(options, vidoInstance);
+        timelinePointerDestroy = timelinePointer.destroy;
+      }
+    });
     return function destroy() {
       unsub();
+      if (timelinePointerDestroy) timelinePointerDestroy();
     };
   };
 }

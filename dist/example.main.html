@@ -172,7 +172,9 @@
       const config = {
         plugins: [
           HighlightWeekends.Plugin(),
-          TimelinePointer.Plugin(),
+          TimelinePointer.Plugin({
+            capture: {},
+          }),
           Selection.Plugin(),
           ItemMovement.Plugin(),
           /*{
