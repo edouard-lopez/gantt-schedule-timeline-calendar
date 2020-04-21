@@ -148,11 +148,13 @@ class SelectionPlugin {
   private html: typeof lithtml.html;
   private wrapperClassName: string;
   private wrapperStyleMap: StyleMap;
+  private merge: (target: object, source: object) => object;
 
   constructor(vido: Vido, options: Options) {
     this.vido = vido;
     this.state = vido.state;
     this.api = vido.api;
+    this.merge = this.state.get('config.merge');
     this.state.update(pluginPath, generateEmptyData(options));
     this.data = generateEmptyData(options);
     this.wrapperClassName = this.api.getClass('chart-selection');
@@ -177,7 +179,9 @@ class SelectionPlugin {
       this.state.subscribe(
         'config.chart.items',
         (items: Items) => {
-          this.data.selected[ITEM] = this.data.selected[ITEM].map((item) => items[item.id]);
+          this.data.selected[ITEM] = this.data.selected[ITEM].filter((item) => !!items[item.id]).map(
+            (item) => this.merge({}, items[item.id]) as Item
+          );
         },
         { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }
       )
@@ -272,7 +276,7 @@ class SelectionPlugin {
     const linked = this.collectLinkedItems(item, [item]);
     if (this.data.selected[ITEM].find((selectedItem) => selectedItem.id === item.id)) {
       // if we want to start movement or something - just return currently selected
-      selected = this.data.selected[ITEM].slice();
+      selected = this.data.selected[ITEM];
       if (automaticallySelected.find((auto) => auto.id === item.id)) {
         // item under the pointer was automaticallySelected so we must remove it from here
         // - it is not automaticallySelected right now
@@ -328,7 +332,8 @@ class SelectionPlugin {
     const multi = move && this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
     let selected = multi ? [...this.data.selected[ITEM]] : [];
     const automaticallySelected = multi ? [...this.data.automaticallySelected[ITEM]] : [];
-    for (const item of visibleItems) {
+    for (let item of visibleItems) {
+      item = this.merge({}, item) as Item;
       const itemData = item.$data;
       if (
         this.isItemVerticallyInsideArea(itemData, areaLocal) &&
@@ -336,7 +341,8 @@ class SelectionPlugin {
       ) {
         if (!selected.find((selectedItem) => selectedItem.id === item.id)) selected.push(item);
         const linked = this.collectLinkedItems(item, [item]);
-        for (const linkedItem of linked) {
+        for (let linkedItem of linked) {
+          linkedItem = this.merge({}, linkedItem) as Item;
           if (!selected.find((selectedItem) => selectedItem.id === linkedItem.id)) {
             selected.push(linkedItem);
             automaticallySelected.push(linkedItem);
@@ -397,7 +403,7 @@ class SelectionPlugin {
     this.data.currentPosition = this.poitnerData.currentPosition;
     this.data.initialPosition = this.poitnerData.initialPosition;
     if (!this.canSelect()) return;
-    const item: Item = this.poitnerData.targetData;
+    const item: Item = this.merge({}, this.poitnerData.targetData) as Item;
     const { selected, automaticallySelected } = this.getSelected(item);
     this.data.selected[ITEM] = selected;
     this.data.automaticallySelected[ITEM] = automaticallySelected;

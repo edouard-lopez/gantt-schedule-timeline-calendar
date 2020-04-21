@@ -66,6 +66,7 @@
           this.vido = vido;
           this.state = vido.state;
           this.api = vido.api;
+          this.merge = this.state.get('config.merge');
           this.state.update(pluginPath, generateEmptyData(options));
           this.data = generateEmptyData(options);
           this.wrapperClassName = this.api.getClass('chart-selection');
@@ -83,7 +84,7 @@
           }));
           // watch and update items that are inside selection
           this.unsub.push(this.state.subscribe('config.chart.items', (items) => {
-              this.data.selected[ITEM] = this.data.selected[ITEM].map((item) => items[item.id]);
+              this.data.selected[ITEM] = this.data.selected[ITEM].filter((item) => !!items[item.id]).map((item) => this.merge({}, items[item.id]));
           }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
           // TODO: watch and update cells that are inside selection
       }
@@ -170,7 +171,7 @@
           const linked = this.collectLinkedItems(item, [item]);
           if (this.data.selected[ITEM].find((selectedItem) => selectedItem.id === item.id)) {
               // if we want to start movement or something - just return currently selected
-              selected = this.data.selected[ITEM].slice();
+              selected = this.data.selected[ITEM];
               if (automaticallySelected.find((auto) => auto.id === item.id)) {
                   // item under the pointer was automaticallySelected so we must remove it from here
                   // - it is not automaticallySelected right now
@@ -224,14 +225,16 @@
           const multi = move && this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
           let selected = multi ? [...this.data.selected[ITEM]] : [];
           const automaticallySelected = multi ? [...this.data.automaticallySelected[ITEM]] : [];
-          for (const item of visibleItems) {
+          for (let item of visibleItems) {
+              item = this.merge({}, item);
               const itemData = item.$data;
               if (this.isItemVerticallyInsideArea(itemData, areaLocal) &&
                   this.isItemHorizontallyInsideArea(itemData, areaLocal)) {
                   if (!selected.find((selectedItem) => selectedItem.id === item.id))
                       selected.push(item);
                   const linked = this.collectLinkedItems(item, [item]);
-                  for (const linkedItem of linked) {
+                  for (let linkedItem of linked) {
+                      linkedItem = this.merge({}, linkedItem);
                       if (!selected.find((selectedItem) => selectedItem.id === linkedItem.id)) {
                           selected.push(linkedItem);
                           automaticallySelected.push(linkedItem);
@@ -290,7 +293,7 @@
           this.data.initialPosition = this.poitnerData.initialPosition;
           if (!this.canSelect())
               return;
-          const item = this.poitnerData.targetData;
+          const item = this.merge({}, this.poitnerData.targetData);
           const { selected, automaticallySelected } = this.getSelected(item);
           this.data.selected[ITEM] = selected;
           this.data.automaticallySelected[ITEM] = automaticallySelected;
