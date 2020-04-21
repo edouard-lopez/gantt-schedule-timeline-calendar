@@ -8561,7 +8561,7 @@ function ChartTimelineItemsRow(vido, props) {
             updateDom();
             update();
         }
-        //{ ignore: ['config.chart.items.*.$data.detached'] }
+        //{ ignore: ['config.chart.items.*.selected', 'config.chart.items.*.$data.detached'] }
         );
     }
     const componentName = 'chart-timeline-items-row';

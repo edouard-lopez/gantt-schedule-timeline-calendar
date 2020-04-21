@@ -221,8 +221,19 @@ class SelectionPlugin {
         }
         return { selected, automaticallySelected };
     }
+    unmarkSelected() {
+        const items = this.state.get('config.chart.items');
+        let multi = this.state.multi();
+        for (const id in items) {
+            const item = items[id];
+            if (item.selected) {
+                multi = multi.update(`config.chart.items.${id}.selected`, false);
+            }
+        }
+        multi.done();
+    }
     deselectItems() {
-        this.state.update(`config.chart.items.*.selected`, false);
+        this.unmarkSelected();
         this.data.selected[ITEM] = [];
         this.updateData();
     }
@@ -239,13 +250,13 @@ class SelectionPlugin {
         const { selected, automaticallySelected } = this.getItemsUnderSelectionArea(this.data.selectionAreaLocal);
         this.data.automaticallySelected[ITEM] = automaticallySelected;
         if (selected.length === 0) {
-            this.state.update(`config.chart.items.*.selected`, false);
+            this.unmarkSelected();
             this.data.selected[ITEM].length = 0;
             return;
         }
         this.data.selected[ITEM] = selected;
+        this.unmarkSelected();
         let multi = this.state.multi();
-        multi = multi.update(`config.chart.items.*.selected`, false);
         for (const item of selected) {
             multi = multi.update(`config.chart.items.${item.id}.selected`, true);
         }
@@ -263,8 +274,8 @@ class SelectionPlugin {
         const { selected, automaticallySelected } = this.getSelected(item);
         this.data.selected[ITEM] = selected;
         this.data.automaticallySelected[ITEM] = automaticallySelected;
+        this.unmarkSelected();
         let multi = this.state.multi();
-        multi = multi.update(`config.chart.items.*.selected`, false);
         for (const item of this.data.selected[ITEM]) {
             multi = multi.update(`config.chart.items.${item.id}.selected`, true);
         }
