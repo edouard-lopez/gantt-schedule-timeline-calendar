@@ -9,7 +9,7 @@
  */
 
 import { PluginData as SelectionPluginData } from './selection.plugin';
-import { Item, DataChartTime, Scroll, DataChartDimensions, ItemTime, Vido, ItemDataTime, Row, Rows } from '../gstc';
+import { Item, DataChartTime, ItemTime, Vido, ItemDataTime, Row, Rows } from '../gstc';
 import { ITEM, Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
 import { Api } from '../api/api';
@@ -294,8 +294,9 @@ class ItemMovement {
   private moveItems() {
     const time: DataChartTime = this.state.get('$data.chart.time');
     let multi = this.state.multi();
-    if (this.data.debug) console.log('moveItems', this.data.moving);
-    for (let item of this.data.moving) {
+    const moving = this.data.moving.map((item) => this.merge({}, item) as Item);
+    if (this.data.debug) console.log('moveItems', moving);
+    for (let item of moving) {
       const newItemTimes = this.getItemMovingTimes(item, time);
       multi = this.moveItemVertically(item, multi);
       if (newItemTimes.startTime.valueOf() !== item.time.start || newItemTimes.endTime.valueOf() !== item.time.end) {
@@ -432,7 +433,7 @@ class ItemMovement {
     }
 
     const onArg: OnArg = {
-      items: [...this.data.moving],
+      items: this.data.moving.map((item) => this.merge({}, item) as Item),
       vido: this.vido,
       movement: { ...this.data.movement, px: { ...this.data.movement.px } },
       time: this.state.get('$data.chart.time'),

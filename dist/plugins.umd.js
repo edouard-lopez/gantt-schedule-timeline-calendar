@@ -418,9 +418,10 @@
       moveItems() {
           const time = this.state.get('$data.chart.time');
           let multi = this.state.multi();
+          const moving = this.data.moving.map((item) => this.merge({}, item));
           if (this.data.debug)
-              console.log('moveItems', this.data.moving);
-          for (let item of this.data.moving) {
+              console.log('moveItems', moving);
+          for (let item of moving) {
               const newItemTimes = this.getItemMovingTimes(item, time);
               multi = this.moveItemVertically(item, multi);
               if (newItemTimes.startTime.valueOf() !== item.time.start || newItemTimes.endTime.valueOf() !== item.time.end) {
@@ -548,7 +549,7 @@
               return this.updateData();
           }
           const onArg = {
-              items: [...this.data.moving],
+              items: this.data.moving.map((item) => this.merge({}, item)),
               vido: this.vido,
               movement: Object.assign(Object.assign({}, this.data.movement), { px: Object.assign({}, this.data.movement.px) }),
               time: this.state.get('$data.chart.time'),
