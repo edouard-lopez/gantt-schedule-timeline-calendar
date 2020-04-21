@@ -5834,19 +5834,28 @@ function Main(vido, props = {}) {
     const { api, state, onDestroy, Actions, update, createComponent, html, StyleMap } = vido;
     const componentName = api.name;
     // Initialize plugins
+    const pluginsDestroy = [];
+    function destroyPlugins() {
+        pluginsDestroy.forEach((destroy) => destroy());
+        pluginsDestroy.length = 0;
+    }
     onDestroy(state.subscribe('config.plugins', (plugins) => {
+        // plugins was changed but it could be whole config that was changed
+        // - we need to destroy actual plugins and mount them again
+        destroyPlugins();
         if (typeof plugins !== 'undefined' && Array.isArray(plugins)) {
             for (const initializePlugin of plugins) {
                 const destroyPlugin = initializePlugin(vido);
                 if (typeof destroyPlugin === 'function') {
-                    onDestroy(destroyPlugin);
+                    pluginsDestroy.push(destroyPlugin);
                 }
                 else if (destroyPlugin && destroyPlugin.hasOwnProperty('destroy')) {
-                    onDestroy(destroyPlugin.destroy);
+                    pluginsDestroy.push(destroyPlugin.destroy);
                 }
             }
         }
     }));
+    onDestroy(destroyPlugins);
     const componentSubs = [];
     let ListComponent;
     componentSubs.push(state.subscribe('config.components.List', (value) => (ListComponent = value)));
