@@ -143,7 +143,7 @@ class SelectionPlugin {
   private vido: Vido;
   private state: DeepState;
   private api: Api;
-  private unsub = [];
+  private onDestroy = [];
   private oldWrapper: Wrapper;
   private html: typeof lithtml.html;
   private wrapperClassName: string;
@@ -161,21 +161,22 @@ class SelectionPlugin {
     this.wrapperStyleMap = new vido.StyleMap({ display: 'none' });
     this.html = vido.html;
     this.wrapper = this.wrapper.bind(this);
+    this.destroy = this.destroy.bind(this);
     this.setWrapper();
-    this.unsub.push(
+    this.onDestroy.push(
       this.state.subscribe('config.plugin.TimelinePointer', (timelinePointerData) => {
         this.poitnerData = timelinePointerData;
         this.onPointerData();
       })
     );
     this.updateData();
-    this.unsub.push(
+    this.onDestroy.push(
       this.state.subscribe(pluginPath, (value) => {
         this.data = value;
       })
     );
     // watch and update items that are inside selection
-    this.unsub.push(
+    this.onDestroy.push(
       this.state.subscribe(
         'config.chart.items',
         (items: Items) => {
@@ -199,7 +200,7 @@ class SelectionPlugin {
   public destroy() {
     this.state.update('config.wrappers.ChartTimelineItems', this.oldWrapper);
     this.oldWrapper = null;
-    this.unsub.forEach((unsub) => unsub());
+    this.onDestroy.forEach((unsub) => unsub());
   }
 
   private updateData() {
@@ -451,11 +452,8 @@ class SelectionPlugin {
 
 export function Plugin(options: Options = {}) {
   options = prepareOptions(options);
-
   return function initialize(vidoInstance: Vido) {
     const selectionPlugin = new SelectionPlugin(vidoInstance, options);
-    return function destroy() {
-      selectionPlugin.destroy();
-    };
+    return selectionPlugin.destroy;
   };
 }

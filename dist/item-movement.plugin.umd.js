@@ -65,6 +65,7 @@
           this.api = vido.api;
           this.state = vido.state;
           this.merge = this.state.get('config.merge');
+          this.destroy = this.destroy.bind(this);
           this.onDestroy.push(this.state.subscribe(pluginPath, (data) => {
               this.data = data;
               if (!data.enabled) {
@@ -334,7 +335,8 @@
   function Plugin(options = {}) {
       return function initialize(vidoInstance) {
           vidoInstance.state.update(pluginPath, generateEmptyPluginData(prepareOptions(options)));
-          new ItemMovement(vidoInstance);
+          const itemMovement = new ItemMovement(vidoInstance);
+          return itemMovement.destroy;
       };
   }
 

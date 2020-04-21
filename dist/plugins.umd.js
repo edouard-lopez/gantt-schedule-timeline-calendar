@@ -60,17 +60,16 @@
           this.data = generateEmptyData(options);
           this.classNames.cell = this.api.getClass(CELL);
           this.classNames.item = this.api.getClass(ITEM);
-          this.element.addEventListener('pointerdown', this.pointerDown, this.data.captureEvents.down);
-          document.addEventListener('pointerup', this.pointerUp, this.data.captureEvents.up);
-          document.addEventListener('pointermove', this.pointerMove, this.data.captureEvents.move);
+          this.destroy = this.destroy.bind(this);
+          this.element.addEventListener('pointerdown', this.pointerDown /*, this.data.captureEvents.down*/);
+          document.addEventListener('pointerup', this.pointerUp /*, this.data.captureEvents.up*/);
+          document.addEventListener('pointermove', this.pointerMove /*, this.data.captureEvents.move*/);
           this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
       }
       destroy() {
-          if (this && this.element) {
-              this.element.removeEventListener('pointerdown', this.pointerDown);
-              document.removeEventListener('pointerup', this.pointerUp);
-              document.removeEventListener('pointermove', this.pointerMove);
-          }
+          this.element.removeEventListener('pointerdown', this.pointerDown);
+          document.removeEventListener('pointerup', this.pointerUp);
+          document.removeEventListener('pointermove', this.pointerMove);
       }
       updateData() {
           this.state.update(pluginPath, () => (Object.assign({}, this.data)));
@@ -154,6 +153,8 @@
           let timelinePointerDestroy;
           const unsub = vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement) => {
               if (timelineElement) {
+                  if (timelinePointerDestroy)
+                      timelinePointerDestroy();
                   const timelinePointer = new TimelinePointer(options, vidoInstance);
                   timelinePointerDestroy = timelinePointer.destroy;
               }
@@ -310,6 +311,7 @@
           this.api = vido.api;
           this.state = vido.state;
           this.merge = this.state.get('config.merge');
+          this.destroy = this.destroy.bind(this);
           this.onDestroy.push(this.state.subscribe(pluginPath$1, (data) => {
               this.data = data;
               if (!data.enabled) {
@@ -579,7 +581,8 @@
   function Plugin$1(options = {}) {
       return function initialize(vidoInstance) {
           vidoInstance.state.update(pluginPath$1, generateEmptyPluginData(prepareOptions(options)));
-          new ItemMovement(vidoInstance);
+          const itemMovement = new ItemMovement(vidoInstance);
+          return itemMovement.destroy;
       };
   }
 
@@ -1617,6 +1620,7 @@
           this.onLeftPointerDown = this.onLeftPointerDown.bind(this);
           this.onLeftPointerMove = this.onLeftPointerMove.bind(this);
           this.onLeftPointerUp = this.onLeftPointerUp.bind(this);
+          this.destroy = this.destroy.bind(this);
           this.updateData();
           document.body.classList.add(this.data.bodyClass);
           this.unsubs.push(this.state.subscribe('config.plugin.ItemResizing', (data) => {
@@ -1632,6 +1636,12 @@
           document.addEventListener('pointerup', this.onLeftPointerUp);
           document.addEventListener('pointermove', this.onRightPointerMove);
           document.addEventListener('pointerup', this.onRightPointerUp);
+          this.state.update('config.wrappers.ChartTimelineItemsRowItem', (oldWrapper) => {
+              if (!this.oldWrapper)
+                  this.oldWrapper = oldWrapper;
+              this.initializeWrapper();
+              return this.wrapper;
+          });
       }
       destroy() {
           this.unsubs.forEach((unsub) => unsub());
@@ -1639,6 +1649,8 @@
           document.removeEventListener('pointerup', this.onLeftPointerUp);
           document.removeEventListener('pointermove', this.onRightPointerMove);
           document.removeEventListener('pointerup', this.onRightPointerUp);
+          if (this.oldWrapper)
+              this.state.update('config.wrappers.ChartTimelineItemsRowItem', () => this.oldWrapper);
       }
       updateData() {
           this.state.update('config.plugin.ItemResizing', this.data);
@@ -1825,20 +1837,11 @@
               .html `<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
           return this.html `${oldContent}${visible ? rightHandle : null}`;
       }
-      getWrapper(oldWrapper) {
-          if (!this.oldWrapper) {
-              this.oldWrapper = oldWrapper;
-          }
-          this.initializeWrapper();
-          return this.wrapper;
-      }
   }
   function Plugin$2(options = {}) {
       return function initialize(vidoInstance) {
           const itemResizing = new ItemResizing(vidoInstance, options);
-          vidoInstance.state.update('config.wrappers.ChartTimelineItemsRowItem', (oldWrapper) => {
-              return itemResizing.getWrapper(oldWrapper);
-          });
+          return itemResizing.destroy;
       };
   }
 
@@ -1893,7 +1896,7 @@
   }
   class SelectionPlugin {
       constructor(vido, options) {
-          this.unsub = [];
+          this.onDestroy = [];
           this.vido = vido;
           this.state = vido.state;
           this.api = vido.api;
@@ -1904,17 +1907,18 @@
           this.wrapperStyleMap = new vido.StyleMap({ display: 'none' });
           this.html = vido.html;
           this.wrapper = this.wrapper.bind(this);
+          this.destroy = this.destroy.bind(this);
           this.setWrapper();
-          this.unsub.push(this.state.subscribe('config.plugin.TimelinePointer', (timelinePointerData) => {
+          this.onDestroy.push(this.state.subscribe('config.plugin.TimelinePointer', (timelinePointerData) => {
               this.poitnerData = timelinePointerData;
               this.onPointerData();
           }));
           this.updateData();
-          this.unsub.push(this.state.subscribe(pluginPath$2, (value) => {
+          this.onDestroy.push(this.state.subscribe(pluginPath$2, (value) => {
               this.data = value;
           }));
           // watch and update items that are inside selection
-          this.unsub.push(this.state.subscribe('config.chart.items', (items) => {
+          this.onDestroy.push(this.state.subscribe('config.chart.items', (items) => {
               this.data.selected[ITEM] = this.data.selected[ITEM].filter((item) => !!items[item.id]).map((item) => this.merge({}, items[item.id]));
           }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
           // TODO: watch and update cells that are inside selection
@@ -1929,7 +1933,7 @@
       destroy() {
           this.state.update('config.wrappers.ChartTimelineItems', this.oldWrapper);
           this.oldWrapper = null;
-          this.unsub.forEach((unsub) => unsub());
+          this.onDestroy.forEach((unsub) => unsub());
       }
       updateData() {
           this.state.update(pluginPath$2, Object.assign({}, this.data));
@@ -2174,9 +2178,7 @@
       options = prepareOptions$1(options);
       return function initialize(vidoInstance) {
           const selectionPlugin = new SelectionPlugin(vidoInstance, options);
-          return function destroy() {
-              selectionPlugin.destroy();
-          };
+          return selectionPlugin.destroy;
       };
   }
 

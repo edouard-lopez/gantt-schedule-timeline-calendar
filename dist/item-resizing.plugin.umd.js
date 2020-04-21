@@ -1044,6 +1044,7 @@
             this.onLeftPointerDown = this.onLeftPointerDown.bind(this);
             this.onLeftPointerMove = this.onLeftPointerMove.bind(this);
             this.onLeftPointerUp = this.onLeftPointerUp.bind(this);
+            this.destroy = this.destroy.bind(this);
             this.updateData();
             document.body.classList.add(this.data.bodyClass);
             this.unsubs.push(this.state.subscribe('config.plugin.ItemResizing', (data) => {
@@ -1059,6 +1060,12 @@
             document.addEventListener('pointerup', this.onLeftPointerUp);
             document.addEventListener('pointermove', this.onRightPointerMove);
             document.addEventListener('pointerup', this.onRightPointerUp);
+            this.state.update('config.wrappers.ChartTimelineItemsRowItem', (oldWrapper) => {
+                if (!this.oldWrapper)
+                    this.oldWrapper = oldWrapper;
+                this.initializeWrapper();
+                return this.wrapper;
+            });
         }
         destroy() {
             this.unsubs.forEach((unsub) => unsub());
@@ -1066,6 +1073,8 @@
             document.removeEventListener('pointerup', this.onLeftPointerUp);
             document.removeEventListener('pointermove', this.onRightPointerMove);
             document.removeEventListener('pointerup', this.onRightPointerUp);
+            if (this.oldWrapper)
+                this.state.update('config.wrappers.ChartTimelineItemsRowItem', () => this.oldWrapper);
         }
         updateData() {
             this.state.update('config.plugin.ItemResizing', this.data);
@@ -1252,20 +1261,11 @@
                 .html `<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
             return this.html `${oldContent}${visible ? rightHandle : null}`;
         }
-        getWrapper(oldWrapper) {
-            if (!this.oldWrapper) {
-                this.oldWrapper = oldWrapper;
-            }
-            this.initializeWrapper();
-            return this.wrapper;
-        }
     }
     function Plugin(options = {}) {
         return function initialize(vidoInstance) {
             const itemResizing = new ItemResizing(vidoInstance, options);
-            vidoInstance.state.update('config.wrappers.ChartTimelineItemsRowItem', (oldWrapper) => {
-                return itemResizing.getWrapper(oldWrapper);
-            });
+            return itemResizing.destroy;
         };
     }
 

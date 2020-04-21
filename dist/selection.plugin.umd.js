@@ -62,7 +62,7 @@
   }
   class SelectionPlugin {
       constructor(vido, options) {
-          this.unsub = [];
+          this.onDestroy = [];
           this.vido = vido;
           this.state = vido.state;
           this.api = vido.api;
@@ -73,17 +73,18 @@
           this.wrapperStyleMap = new vido.StyleMap({ display: 'none' });
           this.html = vido.html;
           this.wrapper = this.wrapper.bind(this);
+          this.destroy = this.destroy.bind(this);
           this.setWrapper();
-          this.unsub.push(this.state.subscribe('config.plugin.TimelinePointer', (timelinePointerData) => {
+          this.onDestroy.push(this.state.subscribe('config.plugin.TimelinePointer', (timelinePointerData) => {
               this.poitnerData = timelinePointerData;
               this.onPointerData();
           }));
           this.updateData();
-          this.unsub.push(this.state.subscribe(pluginPath, (value) => {
+          this.onDestroy.push(this.state.subscribe(pluginPath, (value) => {
               this.data = value;
           }));
           // watch and update items that are inside selection
-          this.unsub.push(this.state.subscribe('config.chart.items', (items) => {
+          this.onDestroy.push(this.state.subscribe('config.chart.items', (items) => {
               this.data.selected[ITEM] = this.data.selected[ITEM].filter((item) => !!items[item.id]).map((item) => this.merge({}, items[item.id]));
           }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
           // TODO: watch and update cells that are inside selection
@@ -98,7 +99,7 @@
       destroy() {
           this.state.update('config.wrappers.ChartTimelineItems', this.oldWrapper);
           this.oldWrapper = null;
-          this.unsub.forEach((unsub) => unsub());
+          this.onDestroy.forEach((unsub) => unsub());
       }
       updateData() {
           this.state.update(pluginPath, Object.assign({}, this.data));
@@ -343,9 +344,7 @@
       options = prepareOptions(options);
       return function initialize(vidoInstance) {
           const selectionPlugin = new SelectionPlugin(vidoInstance, options);
-          return function destroy() {
-              selectionPlugin.destroy();
-          };
+          return selectionPlugin.destroy;
       };
   }
 

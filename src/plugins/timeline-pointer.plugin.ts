@@ -9,7 +9,7 @@
  */
 
 import DeepState from 'deep-state-observer';
-import { Api, stateFromConfig } from '../api/api';
+import { Api } from '../api/api';
 import { Vido } from '../gstc';
 
 export const CELL = 'chart-timeline-grid-row-cell';
@@ -109,18 +109,17 @@ class TimelinePointer {
     this.data = generateEmptyData(options);
     this.classNames.cell = this.api.getClass(CELL);
     this.classNames.item = this.api.getClass(ITEM);
-    this.element.addEventListener('pointerdown', this.pointerDown, this.data.captureEvents.down);
-    document.addEventListener('pointerup', this.pointerUp, this.data.captureEvents.up);
-    document.addEventListener('pointermove', this.pointerMove, this.data.captureEvents.move);
+    this.destroy = this.destroy.bind(this);
+    this.element.addEventListener('pointerdown', this.pointerDown /*, this.data.captureEvents.down*/);
+    document.addEventListener('pointerup', this.pointerUp /*, this.data.captureEvents.up*/);
+    document.addEventListener('pointermove', this.pointerMove /*, this.data.captureEvents.move*/);
     this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
   }
 
   public destroy() {
-    if (this && this.element) {
-      this.element.removeEventListener('pointerdown', this.pointerDown);
-      document.removeEventListener('pointerup', this.pointerUp);
-      document.removeEventListener('pointermove', this.pointerMove);
-    }
+    this.element.removeEventListener('pointerdown', this.pointerDown);
+    document.removeEventListener('pointerup', this.pointerUp);
+    document.removeEventListener('pointermove', this.pointerMove);
   }
 
   private updateData() {
@@ -206,6 +205,7 @@ export function Plugin(options: Options) {
     let timelinePointerDestroy;
     const unsub = vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement: HTMLElement) => {
       if (timelineElement) {
+        if (timelinePointerDestroy) timelinePointerDestroy();
         const timelinePointer = new TimelinePointer(options, vidoInstance);
         timelinePointerDestroy = timelinePointer.destroy;
       }

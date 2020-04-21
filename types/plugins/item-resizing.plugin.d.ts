@@ -54,5 +54,5 @@ export interface PluginData extends Options {
     currentPosition: Point;
     movement: Movement;
 }
-export declare function Plugin(options?: Options): (vidoInstance: Vido) => void;
+export declare function Plugin(options?: Options): (vidoInstance: Vido) => () => void;
 //# sourceMappingURL=item-resizing.plugin.d.ts.map

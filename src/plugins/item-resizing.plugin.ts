@@ -157,6 +157,7 @@ class ItemResizing {
     this.onLeftPointerDown = this.onLeftPointerDown.bind(this);
     this.onLeftPointerMove = this.onLeftPointerMove.bind(this);
     this.onLeftPointerUp = this.onLeftPointerUp.bind(this);
+    this.destroy = this.destroy.bind(this);
     this.updateData();
     document.body.classList.add(this.data.bodyClass);
     this.unsubs.push(
@@ -173,6 +174,11 @@ class ItemResizing {
     document.addEventListener('pointerup', this.onLeftPointerUp);
     document.addEventListener('pointermove', this.onRightPointerMove);
     document.addEventListener('pointerup', this.onRightPointerUp);
+    this.state.update('config.wrappers.ChartTimelineItemsRowItem', (oldWrapper: Wrapper) => {
+      if (!this.oldWrapper) this.oldWrapper = oldWrapper;
+      this.initializeWrapper();
+      return this.wrapper;
+    });
   }
 
   public destroy() {
@@ -181,6 +187,7 @@ class ItemResizing {
     document.removeEventListener('pointerup', this.onLeftPointerUp);
     document.removeEventListener('pointermove', this.onRightPointerMove);
     document.removeEventListener('pointerup', this.onRightPointerUp);
+    if (this.oldWrapper) this.state.update('config.wrappers.ChartTimelineItemsRowItem', () => this.oldWrapper);
   }
 
   private updateData() {
@@ -374,21 +381,11 @@ class ItemResizing {
       .html`<div class=${this.rightClassName} style=${rightStyleMap} @pointerdown=${onRightPointerDown}>${this.data.content}</div>`;
     return this.html`${oldContent}${visible ? rightHandle : null}`;
   }
-
-  public getWrapper(oldWrapper: Wrapper): Wrapper {
-    if (!this.oldWrapper) {
-      this.oldWrapper = oldWrapper;
-    }
-    this.initializeWrapper();
-    return this.wrapper;
-  }
 }
 
 export function Plugin(options: Options = {}) {
   return function initialize(vidoInstance: Vido) {
     const itemResizing = new ItemResizing(vidoInstance, options);
-    vidoInstance.state.update('config.wrappers.ChartTimelineItemsRowItem', (oldWrapper) => {
-      return itemResizing.getWrapper(oldWrapper);
-    });
+    return itemResizing.destroy;
   };
 }
