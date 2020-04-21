@@ -277,7 +277,7 @@
       const result = Object.assign({ debug: false, moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
               px: { horizontal: 0, vertical: 0 },
               time: 0,
-          }, lastMovement: { x: 0, y: 0 }, onStart() {
+          }, lastMovement: { x: 0, y: 0, time: 0 }, onStart() {
               return true;
           },
           onMove() {
@@ -452,6 +452,7 @@
           this.clearCumulationsForItems();
           document.body.classList.add(this.data.bodyClassMoving);
           this.data.position = Object.assign({}, this.selection.currentPosition);
+          this.data.lastMovement.time = this.data.moving[0].time.start;
           this.saveItemsRelativeVerticalPosition();
       }
       onEnd() {
@@ -536,18 +537,32 @@
           this.data.lastMovement.y = this.data.movement.px.vertical;
           this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
           this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
+          this.data.movement.time = this.data.moving[0].time.start - this.data.lastMovement.time;
           this.data.position.x = this.selection.currentPosition.x;
           this.data.position.y = this.selection.currentPosition.y;
+          this.data.lastMovement.time = this.data.moving[0].time.start;
+          if (this.data.state === 'move' &&
+              this.data.lastMovement.x === this.data.movement.px.horizontal &&
+              this.data.lastMovement.y === this.data.movement.px.vertical) {
+              // prevent movement if there is no movement... (performance optimisation)
+              return this.updateData();
+          }
           const onArg = {
-              items: this.data.moving,
+              items: [...this.data.moving],
               vido: this.vido,
-              movement: this.data.movement,
+              movement: Object.assign(Object.assign({}, this.data.movement), { px: Object.assign({}, this.data.movement.px) }),
               time: this.state.get('$data.chart.time'),
           };
-          // if (
-          //   this.data.lastMovement.x !== this.data.movement.px.horizontal ||
-          //   this.data.lastMovement.y !== this.data.movement.px.vertical
-          // ) {
+          if (this.data.state === 'end') {
+              // at the end emit full movement
+              onArg.movement = {
+                  time: this.data.moving[0].time.start - this.data.initialItems[0].time.start,
+                  px: {
+                      horizontal: this.data.moving[0].$data.position.left - this.data.initialItems[0].$data.position.left,
+                      vertical: this.data.moving[0].$data.position.viewTop - this.data.initialItems[0].$data.position.viewTop,
+                  },
+              };
+          }
           if (this.canMove(this.data.state, onArg)) {
               this.moveItems();
           }
@@ -557,7 +572,6 @@
                   this.restoreInitialItems();
               }
           }
-          // }
           this.updateData();
       }
   }

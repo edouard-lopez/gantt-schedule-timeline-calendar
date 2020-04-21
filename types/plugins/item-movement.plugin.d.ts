@@ -43,11 +43,16 @@ export interface Movement {
     px: MovementResult;
     time: number;
 }
+export interface LastMovement {
+    x: number;
+    y: number;
+    time: number;
+}
 export interface PluginData extends Options {
     moving: Item[];
     initialItems: Item[];
     movement: Movement;
-    lastMovement: Point;
+    lastMovement: LastMovement;
     position: Point;
     pointerState: 'up' | 'down' | 'move';
     state: State;
