@@ -3978,10 +3978,12 @@
 	    }
 	}
 
-	const toRemove = [], toUpdate = [];
 	class StyleMap extends Directive {
 	    constructor(styleInfo, detach = false) {
 	        super();
+	        this.toRemove = [];
+	        this.toUpdate = [];
+	        this.debug = false;
 	        this.previous = {};
 	        this.style = styleInfo;
 	        this.detach = detach;
@@ -3989,30 +3991,55 @@
 	    setStyle(styleInfo) {
 	        this.style = styleInfo;
 	    }
+	    setDebug(debug = true) {
+	        this.debug = debug;
+	    }
 	    setDetach(detach) {
 	        this.detach = detach;
 	    }
 	    body(part) {
-	        toRemove.length = 0;
-	        toUpdate.length = 0;
+	        this.toRemove.length = 0;
+	        this.toUpdate.length = 0;
 	        // @ts-ignore
 	        const element = part.committer.element;
-	        const style = element.style;
+	        const elementStyle = element.style;
 	        let previous = this.previous;
+	        if (element.attributes.getNamedItem('style')) {
+	            const currentElementStyles = element.attributes
+	                .getNamedItem('style')
+	                .value.split(';')
+	                .map((item) => item.substr(0, item.indexOf(':')).trim())
+	                .filter((item) => !!item);
+	            for (const name of currentElementStyles) {
+	                if (this.style[name] === undefined) {
+	                    if (!this.toRemove.includes(name))
+	                        this.toRemove.push(name);
+	                }
+	            }
+	        }
 	        for (const name in previous) {
+	            if (!this.style.hasOwnProperty(name))
+	                continue;
 	            if (this.style[name] === undefined) {
-	                toRemove.push(name);
+	                if (!this.toRemove.includes(name))
+	                    this.toRemove.push(name);
 	            }
 	        }
 	        for (const name in this.style) {
+	            if (!this.style.hasOwnProperty(name))
+	                continue;
 	            const value = this.style[name];
 	            const prev = previous[name];
 	            if (prev !== undefined && prev === value) {
 	                continue;
 	            }
-	            toUpdate.push(name);
+	            this.toUpdate.push(name);
 	        }
-	        if (toRemove.length || toUpdate.length) {
+	        if (this.debug) {
+	            console.log('[StyleMap] to remove', [...this.toRemove]);
+	            console.log('[StyleMap] to update', [...this.toUpdate]);
+	        }
+	        if (this.toRemove.length || this.toUpdate.length) {
 	            let parent, nextSibling;
 	            if (this.detach) {
 	                parent = element.parentNode;
@@ -4021,16 +4048,18 @@
 	                    element.remove();
 	                }
 	            }
-	            for (const name of toRemove) {
-	                style.removeProperty(name);
+	            for (const name of this.toRemove) {
+	                elementStyle.removeProperty(name);
+	                if (elementStyle[name])
+	                    delete elementStyle[name];
 	            }
-	            for (const name of toUpdate) {
+	            for (const name of this.toUpdate) {
 	                const value = this.style[name];
 	                if (!name.includes('-')) {
-	                    style[name] = value;
+	                    elementStyle[name] = value;
 	                }
 	                else {
-	                    style.setProperty(name, value);
+	                    elementStyle.setProperty(name, value);
 	                }
 	            }
 	            if (this.detach && parent) {
@@ -4668,6 +4697,7 @@
 	         * @param {function} getProps - you can pass params to component from array item ( example: item=>({id:item.id}) )
 	         * @param {function} component - what kind of components do you want to create?
 	         * @param {boolean} leaveTail - leave last elements and do not destroy corresponding components
+	         * @param {boolean} debug - show debug info
 	         * @returns {array} of components (with updated/destroyed/created ones)
 	         */
 	        reuseComponents(currentComponents, dataArray, getProps, component, leaveTail = true, debug = false) {
