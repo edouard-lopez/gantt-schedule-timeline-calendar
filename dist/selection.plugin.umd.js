@@ -164,14 +164,28 @@
       }
       getSelected(item) {
           let selected;
-          let automaticallySelected = [];
+          let automaticallySelected = this.data.automaticallySelected[ITEM].slice();
           const move = this.poitnerData.events.move;
           const multi = this.data.multiKey && this.modKeyPressed(this.data.multiKey, move);
           const linked = this.collectLinkedItems(item, [item]);
           if (this.data.selected[ITEM].find((selectedItem) => selectedItem.id === item.id)) {
               // if we want to start movement or something - just return currently selected
-              selected = this.data.selected[ITEM];
-              automaticallySelected = this.data.automaticallySelected[ITEM];
+              selected = this.data.selected[ITEM].slice();
+              if (automaticallySelected.find((auto) => auto.id === item.id)) {
+                  // item under the pointer was automaticallySelected so we must remove it from here
+                  // - it is not automaticallySelected right now
+                  // we need to replace current item with one that is linked but doesn't lay down
+                  // in automaticallySelected currently - we need to switch them
+                  // first of all we need to find out which item is linked with current but
+                  // not inside automaticallySelected
+                  const actualAutoIds = automaticallySelected.map((sel) => sel.id);
+                  const replaceWith = selected.find((sel) => item.linkedWith.includes(sel.id) && !actualAutoIds.includes(sel.id));
+                  automaticallySelected = automaticallySelected.filter((currentItem) => currentItem.id !== item.id);
+                  automaticallySelected.push(replaceWith);
+              }
+              else {
+                  automaticallySelected = this.data.automaticallySelected[ITEM];
+              }
           }
           else {
               if (multi) {

@@ -43,6 +43,8 @@ export declare class Api {
     allActions: any[];
     getActions(name: string): any;
     isItemInViewport(item: Item, leftGlobal: number, rightGlobal: number): boolean;
+    getAllLinkedItemsIds(item: Item, items: Items, allLinked?: string[]): string[];
+    prepareLinkedItems(item: Item, items: Items): void;
     prepareItems(items: Items): Items;
     fillEmptyRowValues(rows: Rows): Rows;
     itemsOnTheSameLevel(item1: Item, item2: Item): boolean;

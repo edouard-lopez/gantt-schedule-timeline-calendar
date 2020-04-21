@@ -160,19 +160,36 @@ export class Api {
     return item.time.start <= rightGlobal && item.time.end >= leftGlobal;
   }
 
+  getAllLinkedItemsIds(item: Item, items: Items, allLinked: string[] = []) {
+    if (item.linkedWith && item.linkedWith.length) {
+      if (!allLinked.includes(item.id)) allLinked.push(item.id);
+      for (const linkedItemId of item.linkedWith) {
+        if (allLinked.includes(linkedItemId)) continue;
+        allLinked.push(linkedItemId);
+        const linkedItem = items[linkedItemId];
+        if (!linkedItem)
+          throw new Error(`Linked item not found [id:'${linkedItemId}'] found in item [id:'${item.id}']`);
+        if (linkedItem.linkedWith && linkedItem.linkedWith.length)
+          this.getAllLinkedItemsIds(linkedItem, items, allLinked);
+      }
+    }
+    return allLinked;
+  }
+
+  prepareLinkedItems(item: Item, items: Items) {
+    const allLinkedIds = this.getAllLinkedItemsIds(item, items);
+    for (const linkedItemId of allLinkedIds) {
+      const linkedItem = items[linkedItemId];
+      if (!linkedItem) throw new Error(`Linked item not found [id:'${linkedItemId}'] found in item [id:'${item.id}']`);
+      linkedItem.linkedWith = allLinkedIds.filter((linkedItemId) => linkedItemId !== linkedItem.id);
+    }
+  }
+
   prepareItems(items: Items) {
     const defaultItemHeight = this.state.get('config.chart.item.height');
-    const itemsObj: Items = this.state.get('config.chart.items');
     for (const itemId in items) {
       const item = items[itemId];
-      // linked items should have links to each others
-      if (item.linkedWith && item.linkedWith.length) {
-        for (const itemId of item.linkedWith) {
-          const currentItem: Item = itemsObj[itemId];
-          if (!currentItem.linkedWith) currentItem.linkedWith = [];
-          if (!currentItem.linkedWith.includes(item.id)) currentItem.linkedWith.push(item.id);
-        }
-      }
+      this.prepareLinkedItems(item, items);
       item.time.start = +item.time.start;
       item.time.end = +item.time.end;
       item.id = String(item.id);
