@@ -9,7 +9,7 @@
  */
 
 import { PluginData as SelectionPluginData } from './selection.plugin';
-import { Item, DataChartTime, ItemTime, Vido, ItemDataTime, Row, Rows } from '../gstc';
+import { Item, DataChartTime, Vido, Row, Rows } from '../gstc';
 import { ITEM, Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
 import { Api } from '../api/api';
@@ -30,12 +30,27 @@ export interface SnapEndArg extends SnapArg {
   endTime: Dayjs;
 }
 
-export interface OnArg {
-  items: Item[];
+export interface OnStartArg {
+  item: Item;
+  selectedItems: Item[];
   vido: Vido;
+  state: DeepState;
   time: DataChartTime;
+}
+
+export interface OnMoveArg extends OnStartArg {
   movement: Movement;
 }
+
+export interface OnEndArg extends OnStartArg {
+  totalMovement: Movement;
+}
+
+export interface OnRowArg extends OnStartArg {
+  row: Row;
+}
+
+export type OnArg = OnStartArg | OnMoveArg | OnEndArg | OnRowArg;
 
 export interface SnapToTime {
   start?: (snapStartArgs: SnapStartArg) => Dayjs;
@@ -47,10 +62,10 @@ export interface Options {
   className?: string;
   bodyClass?: string;
   bodyClassMoving?: string;
-  onStart?: (onArg: OnArg) => boolean;
-  onMove?: (onArg: OnArg) => boolean;
-  onEnd?: (onArg: OnArg) => boolean;
-  onRowChange?: (item: Item, newRow: Row) => boolean;
+  onStart?: (onArg: OnStartArg) => void;
+  onMove?: (onArg: OnMoveArg) => boolean;
+  onEnd?: (onArg: OnEndArg) => boolean;
+  onRowChange?: (onArg: OnRowArg) => boolean;
   snapToTime?: SnapToTime;
   debug?: boolean;
 }
@@ -87,7 +102,7 @@ export interface MovingTimes {
   endTime: Dayjs;
 }
 
-export type State = '' | 'start' | 'end' | 'move';
+export type State = '' | 'start' | 'end' | 'move' | '';
 
 export interface Cumulation {
   start: number;
@@ -196,7 +211,7 @@ class ItemMovement {
   }
 
   private updateData() {
-    this.state.update(pluginPath, this.data);
+    this.state.update(pluginPath, { ...this.data });
   }
 
   private clearCumulationsForItems() {
@@ -285,7 +300,16 @@ class ItemMovement {
     const itemShouldBeAt = this.data.position.y + relativePosition;
     const newRow = this.findRowAtViewPosition(itemShouldBeAt, currentRow);
     if (newRow.id !== item.rowId) {
-      if (this.data.onRowChange(item, newRow)) {
+      if (
+        this.data.onRowChange({
+          item,
+          selectedItems: this.data.moving.map((item) => this.merge({}, item) as Item),
+          row: newRow,
+          vido: this.vido,
+          time: this.state.get('$data.chart.time'),
+          state: this.state,
+        })
+      ) {
         multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
       }
     }
@@ -301,17 +325,15 @@ class ItemMovement {
       const newItemTimes = this.getItemMovingTimes(item, time);
       multi = this.moveItemVertically(item, multi);
       if (newItemTimes.startTime.valueOf() !== item.time.start || newItemTimes.endTime.valueOf() !== item.time.end) {
-        multi = multi
-          .update(`config.chart.items.${item.id}.time`, (itemTime: ItemTime) => {
-            itemTime.start = newItemTimes.startTime.valueOf();
-            itemTime.end = newItemTimes.endTime.valueOf();
-            return itemTime;
-          })
-          .update(`config.chart.items.${item.id}.$data.time`, (dataTime: ItemDataTime) => {
-            dataTime.startDate = newItemTimes.startTime;
-            dataTime.endDate = newItemTimes.endTime;
-            return dataTime;
-          });
+        item.time.start = newItemTimes.startTime.valueOf();
+        item.time.end = newItemTimes.endTime.valueOf();
+        item.$data.time.startDate = newItemTimes.startTime;
+        item.$data.time.endDate = newItemTimes.endTime;
+        if (this.dispatchEvent(item, 'move')) {
+          multi = multi
+            .update(`config.chart.items.${item.id}.time`, item.time)
+            .update(`config.chart.items.${item.id}.$data.time`, item.$data.time);
+        }
       }
     }
     multi.done();
@@ -328,57 +350,86 @@ class ItemMovement {
   }
 
   private onStart() {
+    this.data.initialItems = this.data.moving.map((item) => this.merge({}, item) as Item);
     this.clearCumulationsForItems();
     document.body.classList.add(this.data.bodyClassMoving);
     this.data.position = { ...this.selection.currentPosition };
     this.data.lastMovement.time = this.data.moving[0].time.start;
     this.saveItemsRelativeVerticalPosition();
-  }
-
-  private onEnd() {
-    document.body.classList.remove(this.data.bodyClassMoving);
-  }
-
-  private restoreInitialItems() {
-    let multi = this.state.multi();
-    if (this.data.debug) console.log('restoreInitialItems', [...this.data.initialItems]);
     for (const item of this.data.initialItems) {
-      multi = multi.update(`config.chart.items.${item.id}`, item);
+      this.dispatchEvent(item, 'start');
     }
-    multi.done();
+  }
+
+  private restoreInitialItem(item: Item) {
+    const initialItem = this.data.initialItems.find((initial) => initial.id === item.id);
+    if (this.data.debug) console.log('restoreInitialItem', initialItem);
+    this.state
+      .multi()
+      .update(`config.chart.items.${item.id}.time`, initialItem.time)
+      .update(`config.chart.items.${item.id}.$data`, initialItem.$data)
+      .update(`config.chart.items.${item.id}.rowId`, initialItem.rowId)
+      .done();
     this.clearSelection();
     this.updateData();
   }
 
-  private canMove(state: State, onArg: OnArg): boolean {
-    if (this.data.debug) console.log('canMove', state, onArg);
+  private onEnd() {
+    for (const item of this.data.moving) {
+      if (!this.dispatchEvent(item, 'end')) {
+        this.restoreInitialItem(item);
+      }
+    }
+    document.body.classList.remove(this.data.bodyClassMoving);
+    this.clearSelection();
+    this.clearCumulationsForItems();
+  }
+
+  private getCanMoveArgument(item: Item, type: State): OnArg {
+    const onArg = {
+      item,
+      selectedItems: this.data.moving.map((item) => this.merge({}, item) as Item),
+      vido: this.vido,
+      state: this.state,
+      time: this.state.get('$data.chart.time'),
+    };
+    if (type === 'move') {
+      (onArg as OnMoveArg).movement = { ...this.data.movement, px: { ...this.data.movement.px } };
+    }
+    if (type === 'end') {
+      // at the end emit full movement
+      (onArg as OnEndArg).totalMovement = {
+        time: this.data.moving[0].time.start - this.data.initialItems[0].time.start,
+        px: {
+          horizontal: this.data.moving[0].$data.position.left - this.data.initialItems[0].$data.position.left,
+          vertical: this.data.moving[0].$data.position.viewTop - this.data.initialItems[0].$data.position.viewTop,
+        },
+      };
+    }
+    return onArg as OnArg;
+  }
+
+  private dispatchEvent(item: Item, state: State): boolean | void {
+    const onArg = this.getCanMoveArgument(item, state);
     switch (state) {
       case 'start':
         if (this.data.debug) console.log('canMove start', state, onArg, this.data.onStart);
         return this.data.onStart(onArg);
       case 'move':
         if (this.data.debug) console.log('canMove move', state, onArg, this.data.onMove);
-        return this.data.onMove(onArg);
+        return this.data.onMove(onArg as OnMoveArg);
       case 'end':
         if (this.data.debug) console.log('canMove end', state, onArg, this.data.onEnd);
-        return this.data.onEnd(onArg);
+        return this.data.onEnd(onArg as OnEndArg);
     }
     return true;
   }
 
   private onSelectionChange(data: SelectionPluginData) {
     if (!this.data.enabled) return;
-    this.selection = data;
+    this.selection = { ...data };
     if (this.selection.targetType !== ITEM) {
       return this.clearSelection();
-    }
-    if (this.selection.events.move) {
-      this.selection.events.move.preventDefault();
-      this.selection.events.move.stopPropagation();
-    }
-    if (this.selection.events.down) {
-      this.selection.events.down.preventDefault();
-      this.selection.events.down.stopPropagation();
     }
 
     if (this.data.pointerState === 'up' && this.selection.pointerState === 'down') {
@@ -388,76 +439,52 @@ class ItemMovement {
       this.selection.pointerState === 'up'
     ) {
       this.data.state = 'end';
-    } else if (this.data.pointerState === 'move' && this.selection.pointerState === 'move') {
+    } else if (this.selection.pointerState === 'move') {
       this.data.state = 'move';
-    } else if (
-      this.data.pointerState === 'up' &&
-      (this.selection.pointerState === 'move' || this.selection.pointerState === 'up')
-    ) {
-      // do nothing because movement was rejected
-      return;
+    } else {
+      this.data.state = '';
+      return this.updateData();
+    }
+
+    if (this.selection.events.move) {
+      this.selection.events.move.preventDefault();
+      this.selection.events.move.stopPropagation();
+    }
+    if (this.selection.events.down) {
+      this.selection.events.down.preventDefault();
+      this.selection.events.down.stopPropagation();
     }
 
     this.data.pointerState = this.selection.pointerState;
-    this.data.moving = [...this.selection.selected[ITEM]];
-    if (this.data.state === 'start') {
-      this.data.initialItems = this.data.moving.map((item) => this.merge({}, item) as Item);
-    }
+
+    if (this.data.state === 'end') this.onEnd(); // before this.selection.selected[ITEM] clear
+
+    this.data.moving = this.selection.selected[ITEM].map((item) => this.merge({}, item) as Item);
     if (this.data.debug) console.log('state', this.data.pointerState);
 
-    switch (this.data.state) {
-      case 'start':
-        this.onStart();
-        break;
-      case 'end':
-        this.onEnd();
-        break;
+    if (this.data.state === 'start') this.onStart();
+
+    if (this.data.state === 'move' || this.data.state === 'start') {
+      this.data.lastMovement.x = this.data.movement.px.horizontal;
+      this.data.lastMovement.y = this.data.movement.px.vertical;
+      this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
+      this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
+      this.data.movement.time = this.data.moving[0].time.start - this.data.lastMovement.time;
+      this.data.position.x = this.selection.currentPosition.x;
+      this.data.position.y = this.selection.currentPosition.y;
+      this.data.lastMovement.time = this.data.moving[0].time.start;
     }
-
-    this.data.lastMovement.x = this.data.movement.px.horizontal;
-    this.data.lastMovement.y = this.data.movement.px.vertical;
-
-    this.data.movement.px.horizontal = this.selection.currentPosition.x - this.data.position.x;
-    this.data.movement.px.vertical = this.selection.currentPosition.y - this.data.position.y;
-    this.data.movement.time = this.data.moving[0].time.start - this.data.lastMovement.time;
-    this.data.position.x = this.selection.currentPosition.x;
-    this.data.position.y = this.selection.currentPosition.y;
-    this.data.lastMovement.time = this.data.moving[0].time.start;
 
     if (
       this.data.state === 'move' &&
       this.data.lastMovement.x === this.data.movement.px.horizontal &&
       this.data.lastMovement.y === this.data.movement.px.vertical
     ) {
-      // prevent movement if there is no movement... (performance optimisation)
+      // prevent movement if there is no movement... (performance optimization)
       return this.updateData();
     }
 
-    const onArg: OnArg = {
-      items: this.data.moving.map((item) => this.merge({}, item) as Item),
-      vido: this.vido,
-      movement: { ...this.data.movement, px: { ...this.data.movement.px } },
-      time: this.state.get('$data.chart.time'),
-    };
-    if (this.data.state === 'end') {
-      // at the end emit full movement
-      onArg.movement = {
-        time: this.data.moving[0].time.start - this.data.initialItems[0].time.start,
-        px: {
-          horizontal: this.data.moving[0].$data.position.left - this.data.initialItems[0].$data.position.left,
-          vertical: this.data.moving[0].$data.position.viewTop - this.data.initialItems[0].$data.position.viewTop,
-        },
-      };
-    }
-    if (this.canMove(this.data.state, onArg)) {
-      this.moveItems();
-    } else {
-      this.data.pointerState = 'up';
-      if (this.data.state === 'end') {
-        this.restoreInitialItems();
-      }
-    }
-
+    if (this.data.state === 'move') this.moveItems();
     this.updateData();
   }
 }

@@ -987,7 +987,7 @@ const ITEM = 'chart-timeline-items-row-item';
  */
 const lineClass = getClass('chart-timeline-items-row-item-resizing-handle-content-line');
 function generateEmptyData(options = {}) {
-    const result = Object.assign({ enabled: true, handle: {
+    const result = Object.assign({ enabled: true, debug: false, state: '', handle: {
             width: 18,
             horizontalMargin: 0,
             verticalMargin: 0,
@@ -999,7 +999,7 @@ function generateEmptyData(options = {}) {
         }, initialItems: [], leftIsMoving: false, rightIsMoving: false, onStart() {
             return true;
         },
-        onMove() {
+        onResize() {
             return true;
         },
         onEnd() {
@@ -1081,7 +1081,7 @@ class ItemResizing {
         this.spacing = this.state.get('config.chart.spacing');
     }
     getSelectedItems() {
-        return this.state.get(`config.plugin.Selection.selected.${ITEM}`);
+        return this.state.get(`config.plugin.Selection.selected.${ITEM}`).map((item) => this.merge({}, item));
     }
     getRightStyleMap(item, visible) {
         const rightStyleMap = new this.vido.StyleMap({});
@@ -1111,30 +1111,60 @@ class ItemResizing {
         leftStyleMap.style.height = item.$data.actualHeight - this.data.handle.verticalMargin * 2 + 'px';
         return leftStyleMap;
     }
+    restoreInitialItem(itemId) {
+        const item = this.data.initialItems.find((item) => item.id === itemId);
+        if (this.data.debug)
+            console.log('restoreInitialItem', item);
+        if (!item)
+            return;
+        this.state
+            .multi()
+            .update(`config.chart.items.${itemId}.time`, item.time)
+            .update(`config.chart.items.${itemId}.$data`, item.$data)
+            .done();
+        this.updateData();
+    }
+    getItemsForDiff() {
+        const modified = this.getSelectedItems()[0];
+        const original = this.data.initialItems.find((initial) => initial.id === modified.id);
+        return { modified, original };
+    }
     onPointerDown(ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        this.data.initialItems = this.getSelectedItems().map((item) => this.merge({}, item));
+        this.data.initialItems = this.getSelectedItems();
         this.data.initialPosition = {
             x: ev.screenX,
             y: ev.screenY,
         };
         this.data.currentPosition = Object.assign({}, this.data.initialPosition);
+        if (this.data.state === '' || this.data.state === 'end') {
+            this.data.state = 'resize';
+        }
+        for (const item of this.data.initialItems) {
+            this.data.onStart({
+                item,
+                selectedItems: this.data.initialItems,
+                state: this.state,
+                vido: this.vido,
+                time: this.state.get('$data.chart.time'),
+            });
+        }
     }
     onLeftPointerDown(ev) {
         if (!this.data.enabled)
             return;
         document.body.classList.add(this.data.bodyClassLeft);
-        this.data.leftIsMoving = true;
         this.onPointerDown(ev);
+        this.data.leftIsMoving = true;
         this.updateData();
     }
     onRightPointerDown(ev) {
         if (!this.data.enabled)
             return;
         document.body.classList.add(this.data.bodyClassRight);
-        this.data.rightIsMoving = true;
         this.onPointerDown(ev);
+        this.data.rightIsMoving = true;
         this.updateData();
     }
     onPointerMove(ev) {
@@ -1143,13 +1173,18 @@ class ItemResizing {
         this.data.currentPosition.x = ev.screenX;
         this.data.currentPosition.y = ev.screenY;
         this.data.movement.px = this.data.currentPosition.x - this.data.initialPosition.x;
+        const { original, modified } = this.getItemsForDiff();
+        this.data.movement.time = modified.time.start - original.time.start;
+        if (this.data.state === 'resize' || this.data.state === 'start') {
+            this.data.state = 'resize';
+        }
     }
     onLeftPointerMove(ev) {
         if (!this.data.enabled || !this.data.leftIsMoving)
             return;
         this.onPointerMove(ev);
         const selected = this.getSelectedItems();
-        const movement = this.data.movement;
+        const movement = this.merge({}, this.data.movement);
         const time = this.state.get('$data.chart.time');
         let multi = this.state.multi();
         for (let i = 0, len = selected.length; i < len; i++) {
@@ -1167,14 +1202,24 @@ class ItemResizing {
                 startTime: this.api.time.date(leftGlobal),
                 item,
                 time,
-                movement: this.data.movement,
+                movement,
                 vido: this.vido,
             });
             item.time.start = finalLeftGlobalDate.valueOf();
             item.$data.time.startDate = finalLeftGlobalDate;
-            multi = multi
-                .update(`config.chart.items.${item.id}.time`, item.time)
-                .update(`config.chart.items.${item.id}.$data`, item.$data);
+            if (this.data.onResize({
+                item,
+                selectedItems: selected,
+                state: this.state,
+                time,
+                totalMovement: this.getItemTotalMovement(item, 'left'),
+                movement: this.getItemCurrentMovement(item, 'left'),
+                vido: this.vido,
+            })) {
+                multi = multi
+                    .update(`config.chart.items.${item.id}.time`, item.time)
+                    .update(`config.chart.items.${item.id}.$data`, item.$data);
+            }
         }
         multi.done();
         this.updateData();
@@ -1202,36 +1247,100 @@ class ItemResizing {
                 endTime: this.api.time.date(rightGlobal),
                 item,
                 time,
-                movement: this.data.movement,
+                movement,
                 vido: this.vido,
             });
             item.time.end = finalRightGlobalDate.valueOf();
             item.$data.time.endDate = finalRightGlobalDate;
-            multi = multi
-                .update(`config.chart.items.${item.id}.time`, item.time)
-                .update(`config.chart.items.${item.id}.$data`, item.$data);
+            if (this.data.onResize({
+                item,
+                selectedItems: selected,
+                state: this.state,
+                vido: this.vido,
+                time,
+                totalMovement: this.getItemTotalMovement(item, 'right'),
+                movement: this.getItemCurrentMovement(item, 'right'),
+            })) {
+                multi = multi
+                    .update(`config.chart.items.${item.id}.time`, item.time)
+                    .update(`config.chart.items.${item.id}.$data`, item.$data);
+            }
         }
         multi.done();
         this.updateData();
     }
+    getItemTotalMovement(item, which) {
+        const initialItem = this.data.initialItems.find((initial) => initial.id === item.id);
+        let itemMovement;
+        if (which === 'left') {
+            itemMovement = {
+                px: item.$data.position.left - initialItem.$data.position.left,
+                time: item.time.start - initialItem.time.start,
+            };
+        }
+        else {
+            itemMovement = {
+                px: item.$data.position.right - initialItem.$data.position.right,
+                time: item.time.end - initialItem.time.end,
+            };
+        }
+        return itemMovement;
+    }
+    getItemCurrentMovement(item, which) {
+        const lastItem = this.state.get(`config.chart.items.${item.id}`);
+        let itemMovement;
+        if (which === 'left') {
+            itemMovement = {
+                px: item.$data.position.left - lastItem.$data.position.left,
+                time: item.time.start - lastItem.time.start,
+            };
+        }
+        else {
+            itemMovement = {
+                px: item.$data.position.right - lastItem.$data.position.right,
+                time: item.time.end - lastItem.time.end,
+            };
+        }
+        return itemMovement;
+    }
+    onEnd(which) {
+        const items = this.getSelectedItems();
+        for (const item of items) {
+            if (!this.data.onEnd({
+                item,
+                selectedItems: this.getSelectedItems(),
+                state: this.state,
+                vido: this.vido,
+                totalMovement: this.getItemTotalMovement(item, which),
+                time: this.state.get('$data.chart.time'),
+            })) {
+                this.restoreInitialItem(item.id);
+            }
+        }
+    }
     onPointerUp(ev) {
         ev.preventDefault();
         ev.stopPropagation();
+        if (this.data.state === 'resize') {
+            this.data.state = 'end';
+        }
     }
     onLeftPointerUp(ev) {
         if (!this.data.enabled || !this.data.leftIsMoving)
             return;
         document.body.classList.remove(this.data.bodyClassLeft);
-        this.onPointerUp(ev);
         this.data.leftIsMoving = false;
+        this.onPointerUp(ev);
+        this.onEnd('left');
         this.updateData();
     }
     onRightPointerUp(ev) {
         if (!this.data.enabled || !this.data.rightIsMoving)
             return;
         document.body.classList.remove(this.data.bodyClassRight);
-        this.onPointerUp(ev);
         this.data.rightIsMoving = false;
+        this.onPointerUp(ev);
+        this.onEnd('right');
         this.updateData();
     }
     wrapper(input, props) {

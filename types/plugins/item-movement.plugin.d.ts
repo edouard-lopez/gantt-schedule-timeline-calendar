@@ -1,6 +1,7 @@
 import { Item, DataChartTime, Vido, Row } from '../gstc';
 import { Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
+import DeepState from 'deep-state-observer';
 export interface SnapArg {
     item: Item;
     time: DataChartTime;
@@ -13,12 +14,23 @@ export interface SnapStartArg extends SnapArg {
 export interface SnapEndArg extends SnapArg {
     endTime: Dayjs;
 }
-export interface OnArg {
-    items: Item[];
+export interface OnStartArg {
+    item: Item;
+    selectedItems: Item[];
     vido: Vido;
+    state: DeepState;
     time: DataChartTime;
+}
+export interface OnMoveArg extends OnStartArg {
     movement: Movement;
 }
+export interface OnEndArg extends OnStartArg {
+    totalMovement: Movement;
+}
+export interface OnRowArg extends OnStartArg {
+    row: Row;
+}
+export declare type OnArg = OnStartArg | OnMoveArg | OnEndArg | OnRowArg;
 export interface SnapToTime {
     start?: (snapStartArgs: SnapStartArg) => Dayjs;
     end?: (snapEndArgs: SnapEndArg) => Dayjs;
@@ -28,10 +40,10 @@ export interface Options {
     className?: string;
     bodyClass?: string;
     bodyClassMoving?: string;
-    onStart?: (onArg: OnArg) => boolean;
-    onMove?: (onArg: OnArg) => boolean;
-    onEnd?: (onArg: OnArg) => boolean;
-    onRowChange?: (item: Item, newRow: Row) => boolean;
+    onStart?: (onArg: OnStartArg) => void;
+    onMove?: (onArg: OnMoveArg) => boolean;
+    onEnd?: (onArg: OnEndArg) => boolean;
+    onRowChange?: (onArg: OnRowArg) => boolean;
     snapToTime?: SnapToTime;
     debug?: boolean;
 }
@@ -62,7 +74,7 @@ export interface MovingTimes {
     startTime: Dayjs;
     endTime: Dayjs;
 }
-export declare type State = '' | 'start' | 'end' | 'move';
+export declare type State = '' | 'start' | 'end' | 'move' | '';
 export interface Cumulation {
     start: number;
     end: number;
