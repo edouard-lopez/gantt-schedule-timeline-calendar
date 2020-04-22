@@ -1986,7 +1986,7 @@ class SelectionPlugin {
                 const linkedItem = items[linkedItemId];
                 if (!current.includes(linkedItem)) {
                     current.push(linkedItem);
-                    this.collectLinkedItems(linkedItem, current);
+                    // we don't need to go further because linkedWith property already contains all we need
                 }
             }
         }

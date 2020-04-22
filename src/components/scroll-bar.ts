@@ -220,16 +220,17 @@ export default function ScrollBar(vido: Vido, props: Props) {
       const pointerMove = this.pointerMove.bind(this);
       this.pointerMove = schedule((ev) => pointerMove(ev));
       this.unsub = state.subscribe(`config.scroll.${props.type}`, this.dataChanged.bind(this));
+      this.destroy = this.destroy.bind(this);
       element.addEventListener('pointerdown', this.pointerDown);
-      window.addEventListener('pointermove', this.pointerMove, { passive: true });
-      window.addEventListener('pointerup', this.pointerUp);
+      document.addEventListener('pointermove', this.pointerMove, { passive: true });
+      document.addEventListener('pointerup', this.pointerUp);
     }
 
     destroy(element) {
       this.unsub();
       element.removeEventListener('pointerdown', this.pointerDown);
-      window.removeEventListener('pointermove', this.pointerMove);
-      window.removeEventListener('pointerup', this.pointerUp);
+      document.removeEventListener('pointermove', this.pointerMove);
+      document.removeEventListener('pointerup', this.pointerUp);
     }
 
     dataChanged() {
