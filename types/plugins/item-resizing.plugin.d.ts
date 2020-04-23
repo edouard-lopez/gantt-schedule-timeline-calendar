@@ -25,23 +25,25 @@ export interface Movement {
     px: number;
     time: number;
 }
-export interface OnStartArg {
-    item: Item;
-    selectedItems: Item[];
-    state: DeepState;
-    vido: Vido;
-    time: DataChartTime;
-}
-export interface OnResizeArg extends OnStartArg {
-    totalMovement: Movement;
-    movement: Movement;
-}
-export interface OnEndArg extends OnStartArg {
-    totalMovement: Movement;
-}
 export interface SnapToTime {
     start?: (snapStartArgs: SnapStartArg) => Dayjs;
     end?: (snapEndArgs: SnapEndArg) => Dayjs;
+}
+export interface BeforeAfterInitialItems {
+    initial: Item[];
+    before: Item[];
+    after: Item[];
+}
+export interface OnArg {
+    items: BeforeAfterInitialItems;
+    vido: Vido;
+    state: DeepState;
+    time: DataChartTime;
+}
+export interface Events {
+    onStart?: (onArg: OnArg) => Item[];
+    onResize?: (onArg: OnArg) => Item[];
+    onEnd?: (onArg: OnArg) => Item[];
 }
 export interface Options {
     enabled?: boolean;
@@ -51,9 +53,7 @@ export interface Options {
     bodyClass?: string;
     bodyClassLeft?: string;
     bodyClassRight?: string;
-    onStart?: (onArg: OnStartArg) => void;
-    onResize?: (onArg: OnResizeArg) => boolean;
-    onEnd?: (onArg: OnEndArg) => boolean;
+    events?: Events;
     snapToTime?: SnapToTime;
 }
 export declare type State = 'start' | 'resize' | 'end' | '';

@@ -1,4 +1,4 @@
-import { Item, DataChartTime, Vido, Row } from '../gstc';
+import { Item, DataChartTime, Vido } from '../gstc';
 import { Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
 import DeepState from 'deep-state-observer';
@@ -14,36 +14,32 @@ export interface SnapStartArg extends SnapArg {
 export interface SnapEndArg extends SnapArg {
     endTime: Dayjs;
 }
-export interface OnStartArg {
-    item: Item;
-    selectedItems: Item[];
+export interface SnapToTime {
+    start?: (snapStartArgs: SnapStartArg) => Dayjs;
+    end?: (snapEndArgs: SnapEndArg) => Dayjs;
+}
+export interface BeforeAfterInitialItems {
+    initial: Item[];
+    before: Item[];
+    after: Item[];
+}
+export interface OnArg {
+    items: BeforeAfterInitialItems;
     vido: Vido;
     state: DeepState;
     time: DataChartTime;
 }
-export interface OnMoveArg extends OnStartArg {
-    movement: Movement;
-}
-export interface OnEndArg extends OnStartArg {
-    totalMovement: Movement;
-}
-export interface OnRowArg extends OnStartArg {
-    row: Row;
-}
-export declare type OnArg = OnStartArg | OnMoveArg | OnEndArg | OnRowArg;
-export interface SnapToTime {
-    start?: (snapStartArgs: SnapStartArg) => Dayjs;
-    end?: (snapEndArgs: SnapEndArg) => Dayjs;
+export interface Events {
+    onStart?: (onArg: OnArg) => Item[];
+    onMove?: (onArg: OnArg) => Item[];
+    onEnd?: (onArg: OnArg) => Item[];
 }
 export interface Options {
     enabled?: boolean;
     className?: string;
     bodyClass?: string;
     bodyClassMoving?: string;
-    onStart?: (onArg: OnStartArg) => void;
-    onMove?: (onArg: OnMoveArg) => boolean;
-    onEnd?: (onArg: OnEndArg) => boolean;
-    onRowChange?: (onArg: OnRowArg) => boolean;
+    events?: Events;
     snapToTime?: SnapToTime;
     debug?: boolean;
 }

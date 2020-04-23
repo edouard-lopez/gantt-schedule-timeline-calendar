@@ -192,6 +192,10 @@ class SelectionPlugin {
             }
             automaticallySelected = linked.filter((currentItem) => currentItem.id !== item.id);
         }
+        selected = selected.map((item) => {
+            item.selected = true;
+            return item;
+        });
         return { selected, automaticallySelected };
     }
     isItemVerticallyInsideArea(itemData, area) {
@@ -237,6 +241,10 @@ class SelectionPlugin {
                 }
             }
         }
+        selected = selected.map((item) => {
+            item.selected = true;
+            return item;
+        });
         return { selected, automaticallySelected };
     }
     unmarkSelected() {

@@ -993,33 +993,42 @@
      */
     const lineClass = getClass('chart-timeline-items-row-item-resizing-handle-content-line');
     function generateEmptyData(options = {}) {
-        const result = Object.assign({ enabled: true, debug: false, state: '', handle: {
-                width: 18,
-                horizontalMargin: 0,
-                verticalMargin: 0,
-                outside: false,
-                onlyWhenSelected: true,
-            }, content: null, bodyClass: 'gstc-item-resizing', bodyClassLeft: 'gstc-items-resizing-left', bodyClassRight: 'gstc-items-resizing-right', initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, movement: {
+        const events = {
+            onStart({ items }) {
+                return items.after;
+            },
+            onResize({ items }) {
+                return items.after;
+            },
+            onEnd({ items }) {
+                return items.after;
+            },
+        };
+        const snapToTime = {
+            start({ startTime, time }) {
+                return startTime.startOf(time.period);
+            },
+            end({ endTime, time }) {
+                return endTime.endOf(time.period);
+            },
+        };
+        const handle = {
+            width: 18,
+            horizontalMargin: 0,
+            verticalMargin: 0,
+            outside: false,
+            onlyWhenSelected: true,
+        };
+        const result = Object.assign({ enabled: true, debug: false, state: '', content: null, bodyClass: 'gstc-item-resizing', bodyClassLeft: 'gstc-items-resizing-left', bodyClassRight: 'gstc-items-resizing-right', initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, movement: {
                 px: 0,
                 time: 0,
-            }, initialItems: [], leftIsMoving: false, rightIsMoving: false, onStart() {
-                return true;
-            },
-            onResize() {
-                return true;
-            },
-            onEnd() {
-                return true;
-            }, snapToTime: {
-                start({ startTime, time }) {
-                    return startTime.startOf(time.period);
-                },
-                end({ endTime, time }) {
-                    return endTime.endOf(time.period);
-                },
-            } }, options);
+            }, initialItems: [], leftIsMoving: false, rightIsMoving: false, handle: Object.assign({}, handle), events: Object.assign({}, events), snapToTime: Object.assign({}, snapToTime) }, options);
+        if (options.snapToTime)
+            result.snapToTime = Object.assign(Object.assign({}, snapToTime), options.snapToTime);
+        if (options.events)
+            result.events = Object.assign(Object.assign({}, events), options.events);
         if (options.handle)
-            result.handle = Object.assign(Object.assign({}, result.handle), options.handle);
+            result.handle = Object.assign(Object.assign({}, handle), options.handle);
         return result;
     }
     class ItemResizing {
@@ -1117,18 +1126,33 @@
             leftStyleMap.style.height = item.$data.actualHeight - this.data.handle.verticalMargin * 2 + 'px';
             return leftStyleMap;
         }
-        restoreInitialItem(itemId) {
-            const item = this.data.initialItems.find((item) => item.id === itemId);
-            if (this.data.debug)
-                console.log('restoreInitialItem', item);
-            if (!item)
-                return;
-            this.state
-                .multi()
-                .update(`config.chart.items.${itemId}.time`, item.time)
-                .update(`config.chart.items.${itemId}.$data`, item.$data)
-                .done();
-            this.updateData();
+        getEventArgument(afterItems) {
+            const configItems = this.state.get('config.chart.items');
+            const before = [];
+            for (const item of afterItems) {
+                before.push(this.merge({}, configItems[item.id]));
+            }
+            return {
+                items: {
+                    initial: this.data.initialItems,
+                    before,
+                    after: afterItems,
+                },
+                vido: this.vido,
+                state: this.state,
+                time: this.state.get('$data.chart.time'),
+            };
+        }
+        dispatchEvent(type, items) {
+            items = items.map((item) => this.merge({}, item));
+            const modified = this.data.events[type](this.getEventArgument(items));
+            let multi = this.state.multi();
+            for (const item of modified) {
+                multi = multi
+                    .update(`config.chart.items.${item.id}.time`, item.time)
+                    .update(`config.chart.items.${item.id}.$data`, item.$data);
+            }
+            multi.done();
         }
         getItemsForDiff() {
             const modified = this.getSelectedItems()[0];
@@ -1147,15 +1171,7 @@
             if (this.data.state === '' || this.data.state === 'end') {
                 this.data.state = 'resize';
             }
-            for (const item of this.data.initialItems) {
-                this.data.onStart({
-                    item,
-                    selectedItems: this.data.initialItems,
-                    state: this.state,
-                    vido: this.vido,
-                    time: this.state.get('$data.chart.time'),
-                });
-            }
+            this.dispatchEvent('onStart', this.data.initialItems);
         }
         onLeftPointerDown(ev) {
             if (!this.data.enabled)
@@ -1192,7 +1208,6 @@
             const selected = this.getSelectedItems();
             const movement = this.merge({}, this.data.movement);
             const time = this.state.get('$data.chart.time');
-            let multi = this.state.multi();
             for (let i = 0, len = selected.length; i < len; i++) {
                 const item = selected[i];
                 item.$data.position.left = this.data.initialItems[i].$data.position.left + movement.px;
@@ -1213,21 +1228,8 @@
                 });
                 item.time.start = finalLeftGlobalDate.valueOf();
                 item.$data.time.startDate = finalLeftGlobalDate;
-                if (this.data.onResize({
-                    item,
-                    selectedItems: selected,
-                    state: this.state,
-                    time,
-                    totalMovement: this.getItemTotalMovement(item, 'left'),
-                    movement: this.getItemCurrentMovement(item, 'left'),
-                    vido: this.vido,
-                })) {
-                    multi = multi
-                        .update(`config.chart.items.${item.id}.time`, item.time)
-                        .update(`config.chart.items.${item.id}.$data`, item.$data);
-                }
             }
-            multi.done();
+            this.dispatchEvent('onResize', selected);
             this.updateData();
         }
         onRightPointerMove(ev) {
@@ -1237,7 +1239,6 @@
             const selected = this.getSelectedItems();
             const movement = this.data.movement;
             const time = this.state.get('$data.chart.time');
-            let multi = this.state.multi();
             for (let i = 0, len = selected.length; i < len; i++) {
                 const item = selected[i];
                 item.$data.width = this.data.initialItems[i].$data.width + movement.px;
@@ -1258,71 +1259,13 @@
                 });
                 item.time.end = finalRightGlobalDate.valueOf();
                 item.$data.time.endDate = finalRightGlobalDate;
-                if (this.data.onResize({
-                    item,
-                    selectedItems: selected,
-                    state: this.state,
-                    vido: this.vido,
-                    time,
-                    totalMovement: this.getItemTotalMovement(item, 'right'),
-                    movement: this.getItemCurrentMovement(item, 'right'),
-                })) {
-                    multi = multi
-                        .update(`config.chart.items.${item.id}.time`, item.time)
-                        .update(`config.chart.items.${item.id}.$data`, item.$data);
-                }
             }
-            multi.done();
+            this.dispatchEvent('onResize', selected);
             this.updateData();
-        }
-        getItemTotalMovement(item, which) {
-            const initialItem = this.data.initialItems.find((initial) => initial.id === item.id);
-            let itemMovement;
-            if (which === 'left') {
-                itemMovement = {
-                    px: item.$data.position.left - initialItem.$data.position.left,
-                    time: item.time.start - initialItem.time.start,
-                };
-            }
-            else {
-                itemMovement = {
-                    px: item.$data.position.right - initialItem.$data.position.right,
-                    time: item.time.end - initialItem.time.end,
-                };
-            }
-            return itemMovement;
-        }
-        getItemCurrentMovement(item, which) {
-            const lastItem = this.state.get(`config.chart.items.${item.id}`);
-            let itemMovement;
-            if (which === 'left') {
-                itemMovement = {
-                    px: item.$data.position.left - lastItem.$data.position.left,
-                    time: item.time.start - lastItem.time.start,
-                };
-            }
-            else {
-                itemMovement = {
-                    px: item.$data.position.right - lastItem.$data.position.right,
-                    time: item.time.end - lastItem.time.end,
-                };
-            }
-            return itemMovement;
         }
         onEnd(which) {
             const items = this.getSelectedItems();
-            for (const item of items) {
-                if (!this.data.onEnd({
-                    item,
-                    selectedItems: this.getSelectedItems(),
-                    state: this.state,
-                    vido: this.vido,
-                    totalMovement: this.getItemTotalMovement(item, which),
-                    time: this.state.get('$data.chart.time'),
-                })) {
-                    this.restoreInitialItem(item.id);
-                }
-            }
+            this.dispatchEvent('onEnd', items);
         }
         onPointerUp(ev) {
             ev.preventDefault();

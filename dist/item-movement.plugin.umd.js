@@ -29,30 +29,34 @@
   }
   const pluginPath = 'config.plugin.ItemMovement';
   function generateEmptyPluginData(options) {
+      const events = {
+          onStart({ items }) {
+              return items.after;
+          },
+          onMove({ items }) {
+              return items.after;
+          },
+          onEnd({ items }) {
+              return items.after;
+          },
+      };
+      const snapToTime = {
+          start({ startTime, time }) {
+              return startTime.startOf(time.period);
+          },
+          end({ endTime, time }) {
+              return endTime.endOf(time.period);
+          },
+      };
       const result = Object.assign({ debug: false, moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
               px: { horizontal: 0, vertical: 0 },
               time: 0,
-          }, lastMovement: { x: 0, y: 0, time: 0 }, onStart() {
-              return true;
-          },
-          onMove() {
-              return true;
-          },
-          onEnd() {
-              return true;
-          },
-          onRowChange() {
-              return true;
-          }, snapToTime: {
-              start({ startTime, time }) {
-                  return startTime.startOf(time.period);
-              },
-              end({ endTime, time }) {
-                  return endTime.endOf(time.period);
-              },
-          } }, options);
+          }, lastMovement: { x: 0, y: 0, time: 0 }, events: Object.assign({}, events), snapToTime: Object.assign({}, snapToTime) }, options);
       if (options.snapToTime) {
-          result.snapToTime = Object.assign(Object.assign({}, result.snapToTime), options.snapToTime);
+          result.snapToTime = Object.assign(Object.assign({}, snapToTime), options.snapToTime);
+      }
+      if (options.events) {
+          result.events = Object.assign(Object.assign({}, events), options.events);
       }
       return result;
   }
@@ -158,48 +162,46 @@
       getItemRelativeVerticalPosition(item) {
           return this.relativeVerticalPosition[item.id];
       }
-      moveItemVertically(item, multi) {
+      moveItemVertically(item) {
           const rows = this.state.get('config.list.rows');
           const currentRow = rows[item.rowId];
           const relativePosition = this.getItemRelativeVerticalPosition(item);
           const itemShouldBeAt = this.data.position.y + relativePosition;
-          const newRow = this.findRowAtViewPosition(itemShouldBeAt, currentRow);
-          if (newRow.id !== item.rowId) {
-              if (this.data.onRowChange({
-                  item,
-                  selectedItems: this.data.moving.map((item) => this.merge({}, item)),
-                  row: newRow,
-                  vido: this.vido,
-                  time: this.state.get('$data.chart.time'),
-                  state: this.state,
-              })) {
-                  multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
-              }
+          return this.findRowAtViewPosition(itemShouldBeAt, currentRow);
+      }
+      getEventArgument(afterItems) {
+          const configItems = this.state.get('config.chart.items');
+          const before = [];
+          for (const item of afterItems) {
+              before.push(this.merge({}, configItems[item.id]));
           }
-          return multi;
+          return {
+              items: {
+                  initial: this.data.initialItems,
+                  before,
+                  after: afterItems,
+              },
+              vido: this.vido,
+              state: this.state,
+              time: this.state.get('$data.chart.time'),
+          };
       }
       moveItems() {
           const time = this.state.get('$data.chart.time');
-          let multi = this.state.multi();
           const moving = this.data.moving.map((item) => this.merge({}, item));
           if (this.data.debug)
               console.log('moveItems', moving);
           for (let item of moving) {
+              item.rowId = this.moveItemVertically(item).id;
               const newItemTimes = this.getItemMovingTimes(item, time);
-              multi = this.moveItemVertically(item, multi);
               if (newItemTimes.startTime.valueOf() !== item.time.start || newItemTimes.endTime.valueOf() !== item.time.end) {
                   item.time.start = newItemTimes.startTime.valueOf();
                   item.time.end = newItemTimes.endTime.valueOf();
                   item.$data.time.startDate = newItemTimes.startTime;
                   item.$data.time.endDate = newItemTimes.endTime;
-                  if (this.dispatchEvent(item, 'move')) {
-                      multi = multi
-                          .update(`config.chart.items.${item.id}.time`, item.time)
-                          .update(`config.chart.items.${item.id}.$data.time`, item.$data.time);
-                  }
               }
           }
-          multi.done();
+          this.dispatchEvent('onMove', moving);
       }
       clearSelection() {
           this.data.moving = [];
@@ -210,6 +212,19 @@
           this.data.pointerState = 'up';
           this.data.pointerMoved = false;
       }
+      dispatchEvent(type, items) {
+          items = items.map((item) => this.merge({}, item));
+          const modified = this.data.events[type](this.getEventArgument(items));
+          let multi = this.state.multi();
+          for (const item of modified) {
+              multi = multi
+                  .update(`config.chart.items.${item.id}.time`, item.time)
+                  .update(`config.chart.items.${item.id}.$data`, item.$data)
+                  .update(`config.chart.items.${item.id}.rowId`, item.rowId);
+          }
+          multi.done();
+          this.data.moving = modified;
+      }
       onStart() {
           this.data.initialItems = this.data.moving.map((item) => this.merge({}, item));
           this.clearCumulationsForItems();
@@ -217,73 +232,15 @@
           this.data.position = Object.assign({}, this.selection.currentPosition);
           this.data.lastMovement.time = this.data.moving[0].time.start;
           this.saveItemsRelativeVerticalPosition();
-          for (const item of this.data.initialItems) {
-              this.dispatchEvent(item, 'start');
-          }
-      }
-      restoreInitialItem(item) {
-          const initialItem = this.data.initialItems.find((initial) => initial.id === item.id);
-          if (this.data.debug)
-              console.log('restoreInitialItem', initialItem);
-          this.state
-              .multi()
-              .update(`config.chart.items.${item.id}.time`, initialItem.time)
-              .update(`config.chart.items.${item.id}.$data`, initialItem.$data)
-              .update(`config.chart.items.${item.id}.rowId`, initialItem.rowId)
-              .done();
-          this.clearSelection();
-          this.updateData();
+          const initial = this.data.initialItems.map((item) => this.merge({}, item));
+          this.dispatchEvent('onStart', initial);
       }
       onEnd() {
-          for (const item of this.data.moving) {
-              if (!this.dispatchEvent(item, 'end')) {
-                  this.restoreInitialItem(item);
-              }
-          }
+          const moving = this.data.moving.map((item) => this.merge({}, item));
+          this.dispatchEvent('onEnd', moving);
           document.body.classList.remove(this.data.bodyClassMoving);
           this.clearSelection();
           this.clearCumulationsForItems();
-      }
-      getCanMoveArgument(item, type) {
-          const onArg = {
-              item,
-              selectedItems: this.data.moving.map((item) => this.merge({}, item)),
-              vido: this.vido,
-              state: this.state,
-              time: this.state.get('$data.chart.time'),
-          };
-          if (type === 'move') {
-              onArg.movement = Object.assign(Object.assign({}, this.data.movement), { px: Object.assign({}, this.data.movement.px) });
-          }
-          if (type === 'end') {
-              // at the end emit full movement
-              onArg.totalMovement = {
-                  time: this.data.moving[0].time.start - this.data.initialItems[0].time.start,
-                  px: {
-                      horizontal: this.data.moving[0].$data.position.left - this.data.initialItems[0].$data.position.left,
-                      vertical: this.data.moving[0].$data.position.viewTop - this.data.initialItems[0].$data.position.viewTop,
-                  },
-              };
-          }
-          return onArg;
-      }
-      dispatchEvent(item, state) {
-          const onArg = this.getCanMoveArgument(item, state);
-          switch (state) {
-              case 'start':
-                  if (this.data.debug)
-                      console.log('canMove start', state, onArg, this.data.onStart);
-                  return this.data.onStart(onArg);
-              case 'move':
-                  if (this.data.debug)
-                      console.log('canMove move', state, onArg, this.data.onMove);
-                  return this.data.onMove(onArg);
-              case 'end':
-                  if (this.data.debug)
-                      console.log('canMove end', state, onArg, this.data.onEnd);
-                  return this.data.onEnd(onArg);
-          }
-          return true;
       }
       onSelectionChange(data) {
           if (!this.data.enabled)

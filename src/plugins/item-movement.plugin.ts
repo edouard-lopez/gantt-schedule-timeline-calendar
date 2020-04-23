@@ -30,31 +30,28 @@ export interface SnapEndArg extends SnapArg {
   endTime: Dayjs;
 }
 
-export interface OnStartArg {
-  item: Item;
-  selectedItems: Item[];
+export interface SnapToTime {
+  start?: (snapStartArgs: SnapStartArg) => Dayjs;
+  end?: (snapEndArgs: SnapEndArg) => Dayjs;
+}
+
+export interface BeforeAfterInitialItems {
+  initial: Item[];
+  before: Item[];
+  after: Item[];
+}
+
+export interface OnArg {
+  items: BeforeAfterInitialItems;
   vido: Vido;
   state: DeepState;
   time: DataChartTime;
 }
 
-export interface OnMoveArg extends OnStartArg {
-  movement: Movement;
-}
-
-export interface OnEndArg extends OnStartArg {
-  totalMovement: Movement;
-}
-
-export interface OnRowArg extends OnStartArg {
-  row: Row;
-}
-
-export type OnArg = OnStartArg | OnMoveArg | OnEndArg | OnRowArg;
-
-export interface SnapToTime {
-  start?: (snapStartArgs: SnapStartArg) => Dayjs;
-  end?: (snapEndArgs: SnapEndArg) => Dayjs;
+export interface Events {
+  onStart?: (onArg: OnArg) => Item[];
+  onMove?: (onArg: OnArg) => Item[];
+  onEnd?: (onArg: OnArg) => Item[];
 }
 
 export interface Options {
@@ -62,10 +59,7 @@ export interface Options {
   className?: string;
   bodyClass?: string;
   bodyClassMoving?: string;
-  onStart?: (onArg: OnStartArg) => void;
-  onMove?: (onArg: OnMoveArg) => boolean;
-  onEnd?: (onArg: OnEndArg) => boolean;
-  onRowChange?: (onArg: OnRowArg) => boolean;
+  events?: Events;
   snapToTime?: SnapToTime;
   debug?: boolean;
 }
@@ -130,6 +124,25 @@ function prepareOptions(options: Options): Options {
 const pluginPath = 'config.plugin.ItemMovement';
 
 function generateEmptyPluginData(options: Options): PluginData {
+  const events = {
+    onStart({ items }) {
+      return items.after;
+    },
+    onMove({ items }) {
+      return items.after;
+    },
+    onEnd({ items }) {
+      return items.after;
+    },
+  };
+  const snapToTime = {
+    start({ startTime, time }) {
+      return startTime.startOf(time.period);
+    },
+    end({ endTime, time }) {
+      return endTime.endOf(time.period);
+    },
+  };
   const result: PluginData = {
     debug: false,
     moving: [],
@@ -143,32 +156,20 @@ function generateEmptyPluginData(options: Options): PluginData {
       time: 0,
     },
     lastMovement: { x: 0, y: 0, time: 0 },
-    onStart() {
-      return true;
-    },
-    onMove() {
-      return true;
-    },
-    onEnd() {
-      return true;
-    },
-    onRowChange() {
-      return true;
-    },
-    snapToTime: {
-      start({ startTime, time }) {
-        return startTime.startOf(time.period);
-      },
-      end({ endTime, time }) {
-        return endTime.endOf(time.period);
-      },
-    },
+    events: { ...events },
+    snapToTime: { ...snapToTime },
     ...options,
   };
   if (options.snapToTime) {
     result.snapToTime = {
-      ...result.snapToTime,
+      ...snapToTime,
       ...options.snapToTime,
+    };
+  }
+  if (options.events) {
+    result.events = {
+      ...events,
+      ...options.events,
     };
   }
   return result;
@@ -293,50 +294,47 @@ class ItemMovement {
     return this.relativeVerticalPosition[item.id];
   }
 
-  private moveItemVertically(item: Item, multi) {
+  private moveItemVertically(item: Item): Row {
     const rows: Rows = this.state.get('config.list.rows');
     const currentRow: Row = rows[item.rowId];
     const relativePosition = this.getItemRelativeVerticalPosition(item);
     const itemShouldBeAt = this.data.position.y + relativePosition;
-    const newRow = this.findRowAtViewPosition(itemShouldBeAt, currentRow);
-    if (newRow.id !== item.rowId) {
-      if (
-        this.data.onRowChange({
-          item,
-          selectedItems: this.data.moving.map((item) => this.merge({}, item) as Item),
-          row: newRow,
-          vido: this.vido,
-          time: this.state.get('$data.chart.time'),
-          state: this.state,
-        })
-      ) {
-        multi = multi.update(`config.chart.items.${item.id}.rowId`, newRow.id);
-      }
+    return this.findRowAtViewPosition(itemShouldBeAt, currentRow);
+  }
+
+  private getEventArgument(afterItems: Item[]): OnArg {
+    const configItems = this.state.get('config.chart.items');
+    const before = [];
+    for (const item of afterItems) {
+      before.push(this.merge({}, configItems[item.id]) as Item);
     }
-    return multi;
+    return {
+      items: {
+        initial: this.data.initialItems,
+        before,
+        after: afterItems,
+      },
+      vido: this.vido,
+      state: this.state,
+      time: this.state.get('$data.chart.time'),
+    };
   }
 
   private moveItems() {
     const time: DataChartTime = this.state.get('$data.chart.time');
-    let multi = this.state.multi();
     const moving = this.data.moving.map((item) => this.merge({}, item) as Item);
     if (this.data.debug) console.log('moveItems', moving);
     for (let item of moving) {
+      item.rowId = this.moveItemVertically(item).id;
       const newItemTimes = this.getItemMovingTimes(item, time);
-      multi = this.moveItemVertically(item, multi);
       if (newItemTimes.startTime.valueOf() !== item.time.start || newItemTimes.endTime.valueOf() !== item.time.end) {
         item.time.start = newItemTimes.startTime.valueOf();
         item.time.end = newItemTimes.endTime.valueOf();
         item.$data.time.startDate = newItemTimes.startTime;
         item.$data.time.endDate = newItemTimes.endTime;
-        if (this.dispatchEvent(item, 'move')) {
-          multi = multi
-            .update(`config.chart.items.${item.id}.time`, item.time)
-            .update(`config.chart.items.${item.id}.$data.time`, item.$data.time);
-        }
       }
     }
-    multi.done();
+    this.dispatchEvent('onMove', moving);
   }
 
   private clearSelection() {
@@ -349,6 +347,20 @@ class ItemMovement {
     this.data.pointerMoved = false;
   }
 
+  private dispatchEvent(type: 'onStart' | 'onMove' | 'onEnd', items: Item[]) {
+    items = items.map((item) => this.merge({}, item) as Item);
+    const modified = this.data.events[type](this.getEventArgument(items));
+    let multi = this.state.multi();
+    for (const item of modified) {
+      multi = multi
+        .update(`config.chart.items.${item.id}.time`, item.time)
+        .update(`config.chart.items.${item.id}.$data`, item.$data)
+        .update(`config.chart.items.${item.id}.rowId`, item.rowId);
+    }
+    multi.done();
+    this.data.moving = modified;
+  }
+
   private onStart() {
     this.data.initialItems = this.data.moving.map((item) => this.merge({}, item) as Item);
     this.clearCumulationsForItems();
@@ -356,73 +368,16 @@ class ItemMovement {
     this.data.position = { ...this.selection.currentPosition };
     this.data.lastMovement.time = this.data.moving[0].time.start;
     this.saveItemsRelativeVerticalPosition();
-    for (const item of this.data.initialItems) {
-      this.dispatchEvent(item, 'start');
-    }
-  }
-
-  private restoreInitialItem(item: Item) {
-    const initialItem = this.data.initialItems.find((initial) => initial.id === item.id);
-    if (this.data.debug) console.log('restoreInitialItem', initialItem);
-    this.state
-      .multi()
-      .update(`config.chart.items.${item.id}.time`, initialItem.time)
-      .update(`config.chart.items.${item.id}.$data`, initialItem.$data)
-      .update(`config.chart.items.${item.id}.rowId`, initialItem.rowId)
-      .done();
-    this.clearSelection();
-    this.updateData();
+    const initial = this.data.initialItems.map((item) => this.merge({}, item) as Item);
+    this.dispatchEvent('onStart', initial);
   }
 
   private onEnd() {
-    for (const item of this.data.moving) {
-      if (!this.dispatchEvent(item, 'end')) {
-        this.restoreInitialItem(item);
-      }
-    }
+    const moving = this.data.moving.map((item) => this.merge({}, item) as Item);
+    this.dispatchEvent('onEnd', moving);
     document.body.classList.remove(this.data.bodyClassMoving);
     this.clearSelection();
     this.clearCumulationsForItems();
-  }
-
-  private getCanMoveArgument(item: Item, type: State): OnArg {
-    const onArg = {
-      item,
-      selectedItems: this.data.moving.map((item) => this.merge({}, item) as Item),
-      vido: this.vido,
-      state: this.state,
-      time: this.state.get('$data.chart.time'),
-    };
-    if (type === 'move') {
-      (onArg as OnMoveArg).movement = { ...this.data.movement, px: { ...this.data.movement.px } };
-    }
-    if (type === 'end') {
-      // at the end emit full movement
-      (onArg as OnEndArg).totalMovement = {
-        time: this.data.moving[0].time.start - this.data.initialItems[0].time.start,
-        px: {
-          horizontal: this.data.moving[0].$data.position.left - this.data.initialItems[0].$data.position.left,
-          vertical: this.data.moving[0].$data.position.viewTop - this.data.initialItems[0].$data.position.viewTop,
-        },
-      };
-    }
-    return onArg as OnArg;
-  }
-
-  private dispatchEvent(item: Item, state: State): boolean | void {
-    const onArg = this.getCanMoveArgument(item, state);
-    switch (state) {
-      case 'start':
-        if (this.data.debug) console.log('canMove start', state, onArg, this.data.onStart);
-        return this.data.onStart(onArg);
-      case 'move':
-        if (this.data.debug) console.log('canMove move', state, onArg, this.data.onMove);
-        return this.data.onMove(onArg as OnMoveArg);
-      case 'end':
-        if (this.data.debug) console.log('canMove end', state, onArg, this.data.onEnd);
-        return this.data.onEnd(onArg as OnEndArg);
-    }
-    return true;
   }
 
   private onSelectionChange(data: SelectionPluginData) {

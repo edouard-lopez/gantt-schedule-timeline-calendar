@@ -198,6 +198,10 @@
               }
               automaticallySelected = linked.filter((currentItem) => currentItem.id !== item.id);
           }
+          selected = selected.map((item) => {
+              item.selected = true;
+              return item;
+          });
           return { selected, automaticallySelected };
       }
       isItemVerticallyInsideArea(itemData, area) {
@@ -243,6 +247,10 @@
                   }
               }
           }
+          selected = selected.map((item) => {
+              item.selected = true;
+              return item;
+          });
           return { selected, automaticallySelected };
       }
       unmarkSelected() {
