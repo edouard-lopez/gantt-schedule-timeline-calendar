@@ -64,6 +64,7 @@ export interface PluginData extends Options {
     initialItems: Item[];
     initialPosition: Point;
     currentPosition: Point;
+    targetData: Item | null;
     state: State;
     movement: Movement;
 }

@@ -88,6 +88,7 @@ export interface PluginData extends Options {
   initialItems: Item[];
   initialPosition: Point;
   currentPosition: Point;
+  targetData: Item | null;
   state: State;
   movement: Movement;
 }
@@ -136,6 +137,7 @@ function generateEmptyData(options: Options = {}): PluginData {
       time: 0,
     },
     initialItems: [],
+    targetData: null,
     leftIsMoving: false,
     rightIsMoving: false,
     handle: { ...handle },
@@ -269,7 +271,7 @@ class ItemResizing {
         initial: this.data.initialItems,
         before,
         after: afterItems,
-        targetData: this.merge({}, this.state.get('config.plugin.TimelinePointer.targetData')) as Item,
+        targetData: this.data.targetData,
       },
       vido: this.vido,
       state: this.state,
@@ -299,6 +301,8 @@ class ItemResizing {
     ev.preventDefault();
     ev.stopPropagation();
     this.data.initialItems = this.getSelectedItems();
+    // @ts-ignore
+    this.data.targetData = this.merge({}, ev.target.vido) as Item;
     this.data.initialPosition = {
       x: ev.screenX,
       y: ev.screenY,

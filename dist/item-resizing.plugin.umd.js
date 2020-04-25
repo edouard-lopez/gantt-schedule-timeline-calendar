@@ -1022,7 +1022,7 @@
         const result = Object.assign({ enabled: true, debug: false, state: '', content: null, bodyClass: 'gstc-item-resizing', bodyClassLeft: 'gstc-items-resizing-left', bodyClassRight: 'gstc-items-resizing-right', initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, movement: {
                 px: 0,
                 time: 0,
-            }, initialItems: [], leftIsMoving: false, rightIsMoving: false, handle: Object.assign({}, handle), events: Object.assign({}, events), snapToTime: Object.assign({}, snapToTime) }, options);
+            }, initialItems: [], targetData: null, leftIsMoving: false, rightIsMoving: false, handle: Object.assign({}, handle), events: Object.assign({}, events), snapToTime: Object.assign({}, snapToTime) }, options);
         if (options.snapToTime)
             result.snapToTime = Object.assign(Object.assign({}, snapToTime), options.snapToTime);
         if (options.events)
@@ -1137,7 +1137,7 @@
                     initial: this.data.initialItems,
                     before,
                     after: afterItems,
-                    targetData: this.merge({}, this.state.get('config.plugin.TimelinePointer.targetData')),
+                    targetData: this.data.targetData,
                 },
                 vido: this.vido,
                 state: this.state,
@@ -1164,6 +1164,8 @@
             ev.preventDefault();
             ev.stopPropagation();
             this.data.initialItems = this.getSelectedItems();
+            // @ts-ignore
+            this.data.targetData = this.merge({}, ev.target.vido);
             this.data.initialPosition = {
                 x: ev.screenX,
                 y: ev.screenY,
