@@ -33,6 +33,7 @@ export interface BeforeAfterInitialItems {
     initial: Item[];
     before: Item[];
     after: Item[];
+    targetData: Item | null;
 }
 export interface OnArg {
     items: BeforeAfterInitialItems;

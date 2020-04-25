@@ -52,6 +52,7 @@ export interface BeforeAfterInitialItems {
   initial: Item[];
   before: Item[];
   after: Item[];
+  targetData: Item | null;
 }
 
 export interface OnArg {
@@ -268,6 +269,7 @@ class ItemResizing {
         initial: this.data.initialItems,
         before,
         after: afterItems,
+        targetData: this.merge({}, this.state.get('config.plugin.TimelinePointer.targetData')) as Item,
       },
       vido: this.vido,
       state: this.state,

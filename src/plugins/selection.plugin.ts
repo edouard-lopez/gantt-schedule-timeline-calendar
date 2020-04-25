@@ -100,6 +100,7 @@ export interface PluginData extends Options {
   automaticallySelected: Selection;
   events: PointerEvents;
   targetType: ITEM_TYPE | CELL_TYPE | '';
+  targetData: any;
 }
 
 function generateEmptyData(options: Options): PluginData {
@@ -112,6 +113,7 @@ function generateEmptyData(options: Options): PluginData {
     multiKey: 'shift',
     multipleSelection: true,
     targetType: '',
+    targetData: null,
     initialPosition: { x: 0, y: 0 },
     currentPosition: { x: 0, y: 0 },
     selectionAreaLocal: { x: 0, y: 0, width: 0, height: 0 },
@@ -438,6 +440,7 @@ class SelectionPlugin {
     this.data.events = this.poitnerData.events;
     this.data.pointerState = this.poitnerData.pointerState;
     this.data.targetType = this.poitnerData.targetType;
+    this.data.targetData = this.poitnerData.targetData;
     this.updateData();
   }
 

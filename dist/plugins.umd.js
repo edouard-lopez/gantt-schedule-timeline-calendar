@@ -294,7 +294,7 @@
               return endTime.endOf(time.period);
           },
       };
-      const result = Object.assign({ debug: false, moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
+      const result = Object.assign({ debug: false, moving: [], targetData: null, initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
               px: { horizontal: 0, vertical: 0 },
               time: 0,
           }, lastMovement: { x: 0, y: 0, time: 0 }, events: Object.assign({}, events), snapToTime: Object.assign({}, snapToTime) }, options);
@@ -426,6 +426,7 @@
                   initial: this.data.initialItems,
                   before,
                   after: afterItems,
+                  targetData: this.merge({}, this.data.targetData),
               },
               vido: this.vido,
               state: this.state,
@@ -433,6 +434,8 @@
           };
       }
       moveItems() {
+          if (!this.data.enabled)
+              return;
           const time = this.state.get('$data.chart.time');
           const moving = this.data.moving.map((item) => this.merge({}, item));
           if (this.data.debug)
@@ -518,6 +521,7 @@
               this.selection.events.down.stopPropagation();
           }
           this.data.pointerState = this.selection.pointerState;
+          this.data.targetData = Object.assign({}, this.selection.targetData);
           if (this.data.state === 'end')
               this.onEnd(); // before this.selection.selected[ITEM] clear
           this.data.moving = this.selection.selected[ITEM].map((item) => this.merge({}, item));
@@ -1681,6 +1685,7 @@
                   initial: this.data.initialItems,
                   before,
                   after: afterItems,
+                  targetData: this.merge({}, this.state.get('config.plugin.TimelinePointer.targetData')),
               },
               vido: this.vido,
               state: this.state,
@@ -1899,7 +1904,7 @@
   }
   const pluginPath$2 = 'config.plugin.Selection';
   function generateEmptyData$2(options) {
-      return Object.assign({ enabled: true, showOverlay: true, isSelecting: false, pointerState: 'up', selectKey: '', multiKey: 'shift', multipleSelection: true, targetType: '', initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, selectionAreaLocal: { x: 0, y: 0, width: 0, height: 0 }, selectionAreaGlobal: { x: 0, y: 0, width: 0, height: 0 }, selecting: {
+      return Object.assign({ enabled: true, showOverlay: true, isSelecting: false, pointerState: 'up', selectKey: '', multiKey: 'shift', multipleSelection: true, targetType: '', targetData: null, initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, selectionAreaLocal: { x: 0, y: 0, width: 0, height: 0 }, selectionAreaGlobal: { x: 0, y: 0, width: 0, height: 0 }, selecting: {
               [ITEM]: [],
               [CELL]: [],
           }, selected: {
@@ -2183,6 +2188,7 @@
           this.data.events = this.poitnerData.events;
           this.data.pointerState = this.poitnerData.pointerState;
           this.data.targetType = this.poitnerData.targetType;
+          this.data.targetData = this.poitnerData.targetData;
           this.updateData();
       }
       wrapper(input, props) {

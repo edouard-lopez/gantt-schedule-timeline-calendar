@@ -22,6 +22,7 @@ export interface BeforeAfterInitialItems {
     initial: Item[];
     before: Item[];
     after: Item[];
+    targetData: Item;
 }
 export interface OnArg {
     items: BeforeAfterInitialItems;
@@ -58,6 +59,7 @@ export interface LastMovement {
 }
 export interface PluginData extends Options {
     moving: Item[];
+    targetData: Item | null;
     initialItems: Item[];
     movement: Movement;
     lastMovement: LastMovement;

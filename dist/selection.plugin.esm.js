@@ -39,7 +39,7 @@ function prepareOptions(options) {
 }
 const pluginPath = 'config.plugin.Selection';
 function generateEmptyData(options) {
-    return Object.assign({ enabled: true, showOverlay: true, isSelecting: false, pointerState: 'up', selectKey: '', multiKey: 'shift', multipleSelection: true, targetType: '', initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, selectionAreaLocal: { x: 0, y: 0, width: 0, height: 0 }, selectionAreaGlobal: { x: 0, y: 0, width: 0, height: 0 }, selecting: {
+    return Object.assign({ enabled: true, showOverlay: true, isSelecting: false, pointerState: 'up', selectKey: '', multiKey: 'shift', multipleSelection: true, targetType: '', targetData: null, initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, selectionAreaLocal: { x: 0, y: 0, width: 0, height: 0 }, selectionAreaGlobal: { x: 0, y: 0, width: 0, height: 0 }, selecting: {
             [ITEM]: [],
             [CELL]: [],
         }, selected: {
@@ -323,6 +323,7 @@ class SelectionPlugin {
         this.data.events = this.poitnerData.events;
         this.data.pointerState = this.poitnerData.pointerState;
         this.data.targetType = this.poitnerData.targetType;
+        this.data.targetData = this.poitnerData.targetData;
         this.updateData();
     }
     wrapper(input, props) {

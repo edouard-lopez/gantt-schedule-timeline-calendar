@@ -49,6 +49,7 @@ export interface PluginData extends Options {
     automaticallySelected: Selection;
     events: PointerEvents;
     targetType: ITEM_TYPE | CELL_TYPE | '';
+    targetData: any;
 }
 export declare function Plugin(options?: Options): (vidoInstance: Vido) => () => void;
 //# sourceMappingURL=selection.plugin.d.ts.map

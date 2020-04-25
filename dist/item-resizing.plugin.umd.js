@@ -1137,6 +1137,7 @@
                     initial: this.data.initialItems,
                     before,
                     after: afterItems,
+                    targetData: this.merge({}, this.state.get('config.plugin.TimelinePointer.targetData')),
                 },
                 vido: this.vido,
                 state: this.state,

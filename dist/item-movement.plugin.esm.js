@@ -42,7 +42,7 @@ function generateEmptyPluginData(options) {
             return endTime.endOf(time.period);
         },
     };
-    const result = Object.assign({ debug: false, moving: [], initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
+    const result = Object.assign({ debug: false, moving: [], targetData: null, initialItems: [], pointerState: 'up', pointerMoved: false, state: '', position: { x: 0, y: 0 }, movement: {
             px: { horizontal: 0, vertical: 0 },
             time: 0,
         }, lastMovement: { x: 0, y: 0, time: 0 }, events: Object.assign({}, events), snapToTime: Object.assign({}, snapToTime) }, options);
@@ -174,6 +174,7 @@ class ItemMovement {
                 initial: this.data.initialItems,
                 before,
                 after: afterItems,
+                targetData: this.merge({}, this.data.targetData),
             },
             vido: this.vido,
             state: this.state,
@@ -181,6 +182,8 @@ class ItemMovement {
         };
     }
     moveItems() {
+        if (!this.data.enabled)
+            return;
         const time = this.state.get('$data.chart.time');
         const moving = this.data.moving.map((item) => this.merge({}, item));
         if (this.data.debug)
@@ -266,6 +269,7 @@ class ItemMovement {
             this.selection.events.down.stopPropagation();
         }
         this.data.pointerState = this.selection.pointerState;
+        this.data.targetData = Object.assign({}, this.selection.targetData);
         if (this.data.state === 'end')
             this.onEnd(); // before this.selection.selected[ITEM] clear
         this.data.moving = this.selection.selected[ITEM].map((item) => this.merge({}, item));

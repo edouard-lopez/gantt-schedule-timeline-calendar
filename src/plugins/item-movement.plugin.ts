@@ -39,6 +39,7 @@ export interface BeforeAfterInitialItems {
   initial: Item[];
   before: Item[];
   after: Item[];
+  targetData: Item;
 }
 
 export interface OnArg {
@@ -82,6 +83,7 @@ export interface LastMovement {
 
 export interface PluginData extends Options {
   moving: Item[];
+  targetData: Item | null;
   initialItems: Item[];
   movement: Movement;
   lastMovement: LastMovement;
@@ -146,6 +148,7 @@ function generateEmptyPluginData(options: Options): PluginData {
   const result: PluginData = {
     debug: false,
     moving: [],
+    targetData: null,
     initialItems: [],
     pointerState: 'up',
     pointerMoved: false,
@@ -313,6 +316,7 @@ class ItemMovement {
         initial: this.data.initialItems,
         before,
         after: afterItems,
+        targetData: this.merge({}, this.data.targetData) as Item,
       },
       vido: this.vido,
       state: this.state,
@@ -321,6 +325,7 @@ class ItemMovement {
   }
 
   private moveItems() {
+    if (!this.data.enabled) return;
     const time: DataChartTime = this.state.get('$data.chart.time');
     const moving = this.data.moving.map((item) => this.merge({}, item) as Item);
     if (this.data.debug) console.log('moveItems', moving);
@@ -411,6 +416,7 @@ class ItemMovement {
     }
 
     this.data.pointerState = this.selection.pointerState;
+    this.data.targetData = { ...this.selection.targetData };
 
     if (this.data.state === 'end') this.onEnd(); // before this.selection.selected[ITEM] clear
 
