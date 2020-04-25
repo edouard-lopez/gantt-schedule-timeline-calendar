@@ -415,7 +415,11 @@ class SelectionPlugin {
     this.data.initialPosition = this.poitnerData.initialPosition;
     if (!this.canSelect()) return;
     const item: Item = this.merge({}, this.poitnerData.targetData) as Item;
-    const { selected, automaticallySelected } = this.getSelected(item);
+    let { selected, automaticallySelected } = this.getSelected(item);
+    if (selected.length > 1 && !this.data.multipleSelection) {
+      selected = [item];
+      automaticallySelected = [];
+    }
     this.data.selected[ITEM] = selected;
     this.data.automaticallySelected[ITEM] = automaticallySelected;
     this.unmarkSelected();
