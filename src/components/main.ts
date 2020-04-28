@@ -209,12 +209,7 @@ export default function Main(vido: Vido, props = {}) {
     const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
     state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
   }
-  onDestroy(
-    state.subscribeAll(
-      ['$data.innerHeight', '$data.list.rowsHeight', 'config.chart.items.*.rowId'],
-      calculateHeightRelatedThings
-    )
-  );
+  onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
 
   function calculateVisibleRowsHeights() {
     const visibleRows: Row[] = state.get('$data.list.visibleRows');

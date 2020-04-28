@@ -6011,7 +6011,7 @@ function Main(vido, props = {}) {
         const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
         state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
     }
-    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight', 'config.chart.items.*.rowId'], calculateHeightRelatedThings));
+    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
     function calculateVisibleRowsHeights() {
         const visibleRows = state.get('$data.list.visibleRows');
         let height = 0;
@@ -11333,6 +11333,9 @@ class Api {
         if (!rows[dataIndex])
             return;
         this.state.update('config.scroll.vertical', (scrollVertical) => {
+            if (dataIndex + scrollVertical.lastPageCount > rows.length) {
+                dataIndex = rows.length - scrollVertical.lastPageCount;
+            }
             scrollVertical.data = rows[dataIndex];
             scrollVertical.posPx =
                 rows[dataIndex].$data.position.topPercent * (scrollVertical.maxPosPx - scrollVertical.innerSize);

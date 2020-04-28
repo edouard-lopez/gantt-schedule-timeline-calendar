@@ -517,6 +517,9 @@ export class Api {
     const rows: Row[] = this.state.get('$data.list.rowsWithParentsExpanded');
     if (!rows[dataIndex]) return;
     this.state.update('config.scroll.vertical', (scrollVertical: ScrollTypeVertical) => {
+      if (dataIndex + scrollVertical.lastPageCount > rows.length) {
+        dataIndex = rows.length - scrollVertical.lastPageCount;
+      }
       scrollVertical.data = rows[dataIndex];
       scrollVertical.posPx =
         rows[dataIndex].$data.position.topPercent * (scrollVertical.maxPosPx - scrollVertical.innerSize);
