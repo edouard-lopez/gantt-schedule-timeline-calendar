@@ -206,6 +206,7 @@ export interface ScrollType {
     sub?: number;
     scrollArea?: number;
     innerSize?: number;
+    multiplier?: number;
 }
 export interface ScrollTypeHorizontal extends ScrollType {
     data?: ChartTimeDate;

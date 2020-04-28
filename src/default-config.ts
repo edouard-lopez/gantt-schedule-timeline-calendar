@@ -214,6 +214,7 @@ function defaultConfig(): Config {
         posPx: 0,
         maxPosPx: 0,
         area: 0,
+        multiplier: 3,
       },
       vertical: {
         size: 20,
@@ -222,6 +223,7 @@ function defaultConfig(): Config {
         posPx: 0,
         maxPosPx: 0,
         area: 0,
+        multiplier: 3,
       },
     },
     chart: {

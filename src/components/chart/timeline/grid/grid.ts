@@ -97,6 +97,8 @@ export default function ChartTimelineGrid(vido: Vido, props) {
       [
         '$data.list.visibleRows;',
         '$data.list.visibleRowsHeight',
+        '$data.chart.items.*.rowId',
+        '$ddata.chart.items.*.time',
         `$data.chart.time.levels`,
         '$data.innerHeight',
         '$data.chart.dimensions.width',

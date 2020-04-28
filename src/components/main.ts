@@ -209,7 +209,12 @@ export default function Main(vido: Vido, props = {}) {
     const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
     state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
   }
-  onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
+  onDestroy(
+    state.subscribeAll(
+      ['$data.innerHeight', '$data.list.rowsHeight', 'config.chart.items.*.rowId'],
+      calculateHeightRelatedThings
+    )
+  );
 
   function calculateVisibleRowsHeights() {
     const visibleRows: Row[] = state.get('$data.list.visibleRows');
@@ -891,7 +896,34 @@ export default function Main(vido: Vido, props = {}) {
     ro.disconnect();
   });
 
-  function onWheel(ev) {}
+  let horizontalScrollMultiplier, verticalScrollMultiplier;
+  onDestroy(
+    state.subscribe('config.scroll', (scroll) => {
+      horizontalScrollMultiplier = scroll.horizontal.multiplier;
+      verticalScrollMultiplier = scroll.vertical.multiplier;
+    })
+  );
+
+  function onWheel(ev: MouseWheelEvent) {
+    const normalized = api.normalizeMouseWheelEvent(ev);
+    if (ev.shiftKey || normalized.x) {
+      const x = normalized.x ? normalized.x : normalized.y;
+      console.log('x', x);
+      const scrollLeft = api.getScrollLeft();
+      if (x > 0) {
+        api.setScrollLeft(scrollLeft.dataIndex + horizontalScrollMultiplier);
+      } else {
+        api.setScrollLeft(scrollLeft.dataIndex - horizontalScrollMultiplier);
+      }
+      return;
+    }
+    const scrollTop = api.getScrollTop();
+    if (normalized.y > 0) {
+      api.setScrollTop(scrollTop.dataIndex + verticalScrollMultiplier);
+    } else {
+      api.setScrollTop(scrollTop.dataIndex - verticalScrollMultiplier);
+    }
+  }
 
   const actionProps = { ...props, api, state };
   const mainActions = Actions.create(componentActions, actionProps);

@@ -153,7 +153,18 @@ export default function ListColumn(vido: Vido, props: Props) {
       false
     );
   }
-  onDestroy(state.subscribeAll(['$data.list.visibleRows;', '$data.list.visibleRowsHeight'], visibleRowsChange));
+  onDestroy(
+    state.subscribeAll(
+      [
+        '$data.list.visibleRows;',
+        '$data.list.visibleRowsHeight',
+        'config.chart.items.*.height',
+        'config.chart.items.*.rowId',
+        'config.chart.items.*.time',
+      ],
+      visibleRowsChange
+    )
+  );
 
   onDestroy(() => {
     visibleRows.forEach((row) => row.destroy());

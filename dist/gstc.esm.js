@@ -6011,7 +6011,7 @@ function Main(vido, props = {}) {
         const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
         state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
     }
-    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
+    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight', 'config.chart.items.*.rowId'], calculateHeightRelatedThings));
     function calculateVisibleRowsHeights() {
         const visibleRows = state.get('$data.list.visibleRows');
         let height = 0;
@@ -6640,7 +6640,33 @@ function Main(vido, props = {}) {
     onDestroy(() => {
         ro.disconnect();
     });
-    function onWheel(ev) { }
+    let horizontalScrollMultiplier, verticalScrollMultiplier;
+    onDestroy(state.subscribe('config.scroll', (scroll) => {
+        horizontalScrollMultiplier = scroll.horizontal.multiplier;
+        verticalScrollMultiplier = scroll.vertical.multiplier;
+    }));
+    function onWheel(ev) {
+        const normalized = api.normalizeMouseWheelEvent(ev);
+        if (ev.shiftKey || normalized.x) {
+            const x = normalized.x ? normalized.x : normalized.y;
+            console.log('x', x);
+            const scrollLeft = api.getScrollLeft();
+            if (x > 0) {
+                api.setScrollLeft(scrollLeft.dataIndex + horizontalScrollMultiplier);
+            }
+            else {
+                api.setScrollLeft(scrollLeft.dataIndex - horizontalScrollMultiplier);
+            }
+            return;
+        }
+        const scrollTop = api.getScrollTop();
+        if (normalized.y > 0) {
+            api.setScrollTop(scrollTop.dataIndex + verticalScrollMultiplier);
+        }
+        else {
+            api.setScrollTop(scrollTop.dataIndex - verticalScrollMultiplier);
+        }
+    }
     const actionProps = Object.assign(Object.assign({}, props), { api, state });
     const mainActions = Actions.create(componentActions, actionProps);
     return (templateProps) => wrapper(html `
@@ -7189,7 +7215,13 @@ function ListColumn(vido, props) {
         const val = state.get('$data.list.visibleRows') || [];
         reuseComponents(visibleRows, val, (row) => row && { columnId: props.columnId, rowId: row.id, width }, ListColumnRowComponent, false);
     }
-    onDestroy(state.subscribeAll(['$data.list.visibleRows;', '$data.list.visibleRowsHeight'], visibleRowsChange));
+    onDestroy(state.subscribeAll([
+        '$data.list.visibleRows;',
+        '$data.list.visibleRowsHeight',
+        'config.chart.items.*.height',
+        'config.chart.items.*.rowId',
+        'config.chart.items.*.time',
+    ], visibleRowsChange));
     onDestroy(() => {
         visibleRows.forEach((row) => row.destroy());
         componentsSub.forEach((unsub) => unsub());
@@ -8227,6 +8259,8 @@ function ChartTimelineGrid(vido, props) {
     onDestroy(state.subscribeAll([
         '$data.list.visibleRows;',
         '$data.list.visibleRowsHeight',
+        '$data.chart.items.*.rowId',
+        '$ddata.chart.items.*.time',
         `$data.chart.time.levels`,
         '$data.innerHeight',
         '$data.chart.dimensions.width',
@@ -9005,6 +9039,7 @@ function defaultConfig() {
                 posPx: 0,
                 maxPosPx: 0,
                 area: 0,
+                multiplier: 3,
             },
             vertical: {
                 size: 20,
@@ -9013,6 +9048,7 @@ function defaultConfig() {
                 posPx: 0,
                 maxPosPx: 0,
                 area: 0,
+                multiplier: 3,
             },
         },
         chart: {
