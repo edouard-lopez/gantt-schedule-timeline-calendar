@@ -107,7 +107,10 @@ export default function Main(vido: Vido, props = {}) {
     update();
   }
   onDestroy(
-    state.subscribeAll(['config.height', 'config.headerHeight', 'config.scroll.horizontal.size'], heightChange)
+    state.subscribeAll(
+      ['config.height', 'config.innerHeight', 'config.headerHeight', 'config.scroll.horizontal.size'],
+      heightChange
+    )
   );
 
   function resizerActiveChange(active: boolean) {
@@ -209,7 +212,7 @@ export default function Main(vido: Vido, props = {}) {
     const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
     state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
   }
-  onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
+  onDestroy(state.subscribeAll(['config.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
 
   function calculateVisibleRowsHeights() {
     const visibleRows: Row[] = state.get('$data.list.visibleRows');
@@ -903,7 +906,6 @@ export default function Main(vido: Vido, props = {}) {
     const normalized = api.normalizeMouseWheelEvent(ev);
     if (ev.shiftKey || normalized.x) {
       const x = normalized.x ? normalized.x : normalized.y;
-      console.log('x', x);
       const scrollLeft = api.getScrollLeft();
       if (x > 0) {
         api.setScrollLeft(scrollLeft.dataIndex + horizontalScrollMultiplier);
