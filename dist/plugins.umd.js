@@ -1893,6 +1893,7 @@
           items: true,
           rows: false,
           showOverlay: true,
+          rectangularSelection: true,
           multipleSelection: true,
           canSelect(type, currently, all) {
               return currently;
@@ -2179,8 +2180,11 @@
           multi.done();
       }
       onPointerData() {
-          if (this.poitnerData.isMoving && this.poitnerData.targetType === CELL) {
+          if (this.poitnerData.isMoving && this.poitnerData.targetType === CELL && this.data.rectangularSelection) {
               this.selectMultipleCellsAndItems();
+          }
+          else if (this.poitnerData.isMoving && this.poitnerData.targetType === CELL && !this.data.rectangularSelection) {
+              this.deselectItems();
           }
           else if (this.poitnerData.isMoving && this.poitnerData.targetType === ITEM) {
               this.selectItemsIndividually();
@@ -2202,7 +2206,11 @@
               return input;
           const oldContent = this.oldWrapper(input, props);
           let shouldDetach = true;
-          if (this.canSelect() && this.data.isSelecting && this.data.showOverlay && this.data.multipleSelection) {
+          if (this.canSelect() &&
+              this.data.isSelecting &&
+              this.data.showOverlay &&
+              this.data.multipleSelection &&
+              this.data.rectangularSelection) {
               this.wrapperStyleMap.style.display = 'block';
               this.wrapperStyleMap.style.left = this.data.selectionAreaLocal.x + 'px';
               this.wrapperStyleMap.style.top = this.data.selectionAreaLocal.y + 'px';

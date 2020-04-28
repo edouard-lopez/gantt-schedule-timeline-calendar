@@ -7,6 +7,7 @@ export interface Options {
     items?: boolean;
     rows?: boolean;
     showOverlay?: boolean;
+    rectangularSelection?: boolean;
     multipleSelection?: boolean;
     selectKey?: ModKey;
     multiKey?: ModKey;
