@@ -273,14 +273,12 @@ export default function Main(vido: Vido, props = {}) {
         visibleItems.push(item);
       }
     }
-    let updateVisibleItems = false;
     const currentVisibleItems = state.get('$data.chart.visibleItems');
-    if (visibleItems.length !== currentVisibleItems) {
-      updateVisibleItems = true;
-    } else if (visibleItems.map((item) => item.id).join('-') !== currentVisibleItems.map((item) => item.id).join('-')) {
-      updateVisibleItems = true;
+    const currentIds = visibleItems.map((item) => item.id).join('|');
+    const oldIds = currentVisibleItems.map((item) => item.id).join('|');
+    if (currentIds !== oldIds) {
+      state.update('$data.chart.visibleItems', visibleItems);
     }
-    if (updateVisibleItems) state.update('$data.chart.visibleItems', visibleItems);
     update();
   }
   onDestroy(

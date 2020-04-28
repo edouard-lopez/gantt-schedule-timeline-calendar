@@ -1,5 +1,3 @@
-
-(function(l, r) { if (l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (window.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(window.document);
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
@@ -6076,16 +6074,12 @@
 	                visibleItems.push(item);
 	            }
 	        }
-	        let updateVisibleItems = false;
 	        const currentVisibleItems = state.get('$data.chart.visibleItems');
-	        if (visibleItems.length !== currentVisibleItems) {
-	            updateVisibleItems = true;
-	        }
-	        else if (visibleItems.map((item) => item.id).join('-') !== currentVisibleItems.map((item) => item.id).join('-')) {
-	            updateVisibleItems = true;
-	        }
-	        if (updateVisibleItems)
+	        const currentIds = visibleItems.map((item) => item.id).join('|');
+	        const oldIds = currentVisibleItems.map((item) => item.id).join('|');
+	        if (currentIds !== oldIds) {
 	            state.update('$data.chart.visibleItems', visibleItems);
+	        }
 	        update();
 	    }
 	    onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'], generateVisibleRowsAndItems, { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }));

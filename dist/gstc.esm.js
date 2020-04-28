@@ -6068,16 +6068,12 @@ function Main(vido, props = {}) {
                 visibleItems.push(item);
             }
         }
-        let updateVisibleItems = false;
         const currentVisibleItems = state.get('$data.chart.visibleItems');
-        if (visibleItems.length !== currentVisibleItems) {
-            updateVisibleItems = true;
-        }
-        else if (visibleItems.map((item) => item.id).join('-') !== currentVisibleItems.map((item) => item.id).join('-')) {
-            updateVisibleItems = true;
-        }
-        if (updateVisibleItems)
+        const currentIds = visibleItems.map((item) => item.id).join('|');
+        const oldIds = currentVisibleItems.map((item) => item.id).join('|');
+        if (currentIds !== oldIds) {
             state.update('$data.chart.visibleItems', visibleItems);
+        }
         update();
     }
     onDestroy(state.subscribeAll(['$data.list.rowsWithParentsExpanded', 'config.scroll.vertical.dataIndex', 'config.chart.items.*.rowId'], generateVisibleRowsAndItems, { bulk: true /*, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected']*/ }));
