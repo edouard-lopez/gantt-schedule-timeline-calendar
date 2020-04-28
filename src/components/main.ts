@@ -203,35 +203,6 @@ export default function Main(vido: Vido, props = {}) {
     )
   );
 
-  function calculateHeightRelatedThings() {
-    const rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
-    const rowsHeight = state.get('$data.list.rowsHeight');
-    if (rowsHeight === lastRowsHeight) return;
-    lastRowsHeight = rowsHeight;
-    const innerHeight = state.get('$data.innerHeight');
-    const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
-    state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
-  }
-  onDestroy(state.subscribeAll(['config.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
-
-  function calculateVisibleRowsHeights() {
-    const visibleRows: Row[] = state.get('$data.list.visibleRows');
-    let height = 0;
-    for (const row of visibleRows) {
-      height += api.recalculateRowHeight(row);
-    }
-    state.update('$data.list.visibleRowsHeight', height);
-  }
-  onDestroy(
-    state.subscribeAll(
-      ['config.chart.items.*.time', 'config.chart.items.*.$data.position', '$data.list.visibleRows'],
-      calculateVisibleRowsHeights,
-      {
-        bulk: true,
-      }
-    )
-  );
-
   function getLastPageRowsHeight(innerHeight: number, rowsWithParentsExpanded: Row[]): number {
     if (rowsWithParentsExpanded.length === 0) return 0;
     let currentHeight = 0;
@@ -252,6 +223,35 @@ export default function Main(vido: Vido, props = {}) {
       .done();
     return currentHeight;
   }
+
+  function calculateHeightRelatedThings() {
+    const rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
+    const rowsHeight = state.get('$data.list.rowsHeight');
+    if (rowsHeight === lastRowsHeight) return;
+    lastRowsHeight = rowsHeight;
+    const innerHeight = state.get('$data.innerHeight');
+    const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
+    state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
+  }
+  onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
+
+  function calculateVisibleRowsHeights() {
+    const visibleRows: Row[] = state.get('$data.list.visibleRows');
+    let height = 0;
+    for (const row of visibleRows) {
+      height += api.recalculateRowHeight(row);
+    }
+    state.update('$data.list.visibleRowsHeight', height);
+  }
+  onDestroy(
+    state.subscribeAll(
+      ['config.chart.items.*.time', 'config.chart.items.*.$data.position', '$data.list.visibleRows'],
+      calculateVisibleRowsHeights,
+      {
+        bulk: true,
+      }
+    )
+  );
 
   function generateVisibleRowsAndItems() {
     const visibleRows = api.getVisibleRows(state.get('$data.list.rowsWithParentsExpanded'));
