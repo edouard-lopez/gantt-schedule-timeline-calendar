@@ -71,7 +71,7 @@ body.gstc-scrolling * {
   touch-action: none;
 }
 .gantt-schedule-timeline-calendar__list-toggle {
-  position: fixed;
+  position: absolute;
   user-select: none;
   left: 0px;
   top: 0px;
