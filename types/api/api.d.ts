@@ -7,11 +7,11 @@ export declare function prepareState(userConfig: Config): {
     config: any;
 };
 export declare function stateFromConfig(userConfig: Config): any;
-export declare function stateFromConfigExperimental(userConfig: Config): Promise<any>;
+export declare function wasmStateFromConfig(userConfig: Config, wasmFile?: string): Promise<any>;
 export declare const publicApi: {
     name: string;
     stateFromConfig: typeof stateFromConfig;
-    stateFromConfigExperimental: typeof stateFromConfigExperimental;
+    wasmStateFromConfig: typeof wasmStateFromConfig;
     merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
     date(time: any): dayjs.Dayjs;
     setPeriod(period: dayjs.OpUnitType): number;

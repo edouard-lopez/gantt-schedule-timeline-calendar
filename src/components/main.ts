@@ -184,8 +184,8 @@ export default function Main(vido: Vido, props = {}) {
     api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
     state
       .multi()
-      .update('$data.list.rowsHeight', rowsHeight)
-      .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
+      .update('$data.list.rowsHeight', rowsHeight, { force: true })
+      .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded, { force: true })
       .done();
     update();
   }
@@ -196,6 +196,7 @@ export default function Main(vido: Vido, props = {}) {
         'config.chart.items.*.height',
         'config.chart.items.*.rowId',
         'config.list.rows.*.height',
+        'config.list.rows.*.$data.outerHeight',
         'config.scroll.vertical.area',
       ],
       prepareExpandedCalculateRowHeightsAndFixOverlapped,
@@ -218,8 +219,8 @@ export default function Main(vido: Vido, props = {}) {
     }
     state
       .multi()
-      .update('config.scroll.vertical.lastPageSize', currentHeight)
-      .update('config.scroll.vertical.lastPageCount', count)
+      .update('config.scroll.vertical.lastPageSize', currentHeight, { force: true })
+      .update('config.scroll.vertical.lastPageCount', count, { force: true })
       .done();
     return currentHeight;
   }
@@ -231,7 +232,7 @@ export default function Main(vido: Vido, props = {}) {
     lastRowsHeight = rowsHeight;
     const innerHeight = state.get('$data.innerHeight');
     const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
-    state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
+    state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight, { force: true });
   }
   onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
 
@@ -520,6 +521,7 @@ export default function Main(vido: Vido, props = {}) {
     const rows: Rows = state.get('config.list.rows');
     if (!rows) return multi;
     if (!time.levels || !time.levels[time.level]) return multi;
+    const spacing = state.get('config.chart.spacing') || 0;
     for (const item of visibleItems) {
       const row = rows[item.rowId];
       if (!row || !row.$data) continue;
@@ -534,16 +536,15 @@ export default function Main(vido: Vido, props = {}) {
         position.actualTop === actualTop &&
         position.viewTop === viewTop
       ) {
-        continue; // prevent infinite loop
+        continue; // prevent infinite loop because we are watching items too
       }
       multi = multi.update(`config.chart.items.${item.id}.$data`, function ($data: ItemData) {
         $data.position.left = left;
         $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
         $data.position.right = right;
         $data.position.actualRight = api.time.limitOffsetPxToView(right, time);
-        $data.width = right - left - (state.get('config.chart.spacing') || 0);
-        $data.actualWidth =
-          $data.position.actualRight - $data.position.actualLeft - (state.get('config.chart.spacing') || 0);
+        $data.width = right - left - spacing;
+        $data.actualWidth = $data.position.actualRight - $data.position.actualLeft - spacing;
         $data.position.actualTop = actualTop;
         $data.position.viewTop = viewTop;
         return $data;

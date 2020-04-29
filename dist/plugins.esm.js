@@ -256,6 +256,72 @@ var ItemHold$1 = /*#__PURE__*/Object.freeze({
 });
 
 /**
+ * Schedule - a throttle function that uses requestAnimationFrame to limit the rate at which a function is called.
+ *
+ * @param {function} fn
+ * @returns {function}
+ */
+/**
+ * Is object - helper function to determine if specified variable is an object
+ *
+ * @param {any} item
+ * @returns {boolean}
+ */
+function isObject(item) {
+    return item && typeof item === 'object' && !Array.isArray(item);
+}
+/**
+ * Merge deep - helper function which will merge objects recursively - creating brand new one - like clone
+ *
+ * @param {object} target
+ * @params {[object]} sources
+ * @returns {object}
+ */
+function mergeDeep(target, ...sources) {
+    const source = sources.shift();
+    if (isObject(target) && isObject(source)) {
+        for (const key in source) {
+            if (isObject(source[key])) {
+                if (typeof source[key].clone === 'function') {
+                    target[key] = source[key].clone();
+                }
+                else {
+                    if (typeof target[key] === 'undefined') {
+                        target[key] = {};
+                    }
+                    target[key] = mergeDeep(target[key], source[key]);
+                }
+            }
+            else if (Array.isArray(source[key])) {
+                target[key] = new Array(source[key].length);
+                let index = 0;
+                for (let item of source[key]) {
+                    if (isObject(item)) {
+                        if (typeof item.clone === 'function') {
+                            target[key][index] = item.clone();
+                        }
+                        else {
+                            target[key][index] = mergeDeep({}, item);
+                        }
+                    }
+                    else {
+                        target[key][index] = item;
+                    }
+                    index++;
+                }
+            }
+            else {
+                target[key] = source[key];
+            }
+        }
+    }
+    if (!sources.length) {
+        return target;
+    }
+    return mergeDeep(target, ...sources);
+}
+
+/**
  * ItemMovement plugin
  *
  * @copyright Rafal Pospiech <https://neuronet.io>
@@ -460,10 +526,11 @@ class ItemMovement {
         const modified = this.data.events[type](this.getEventArgument(items));
         let multi = this.state.multi();
         for (const item of modified) {
-            multi = multi
-                .update(`config.chart.items.${item.id}.time`, item.time)
-                .update(`config.chart.items.${item.id}.$data`, item.$data)
-                .update(`config.chart.items.${item.id}.rowId`, item.rowId);
+            multi = multi.update(`config.chart.items.${item.id}`, (currentItem) => {
+                // items should be always references - we cannot make a copy of the object because it may lead to troubles
+                mergeDeep(currentItem, item);
+                return currentItem;
+            });
         }
         multi.done();
         this.data.moving = modified;
@@ -1491,6 +1558,184 @@ class Action {
 }
 Action.prototype.isAction = true;
 
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+/**
+ * An expression marker with embedded unique key to avoid collision with
+ * possible text in templates.
+ */
+const marker = `{{lit-${String(Math.random()).slice(2)}}}`;
+/**
+ * Used to clone existing node instead of each time creating new one which is
+ * slower
+ */
+const markerNode = document.createComment('');
+
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+/**
+ * Used to clone existing node instead of each time creating new one which is
+ * slower
+ */
+const emptyTemplateNode = document.createElement('template');
+
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+/**
+ * Used to clone text node instead of each time creating new one which is slower
+ */
+const emptyTextNode = document.createTextNode('');
+// Detect event listener options support. If the `capture` property is read
+// from the options object, then options are supported. If not, then the third
+// argument to add/removeEventListener is interpreted as the boolean capture
+// value so we should only pass the `capture` property.
+let eventOptionsSupported = false;
+// Wrap into an IIFE because MS Edge <= v41 does not support having try/catch
+// blocks right into the body of a module
+(() => {
+    try {
+        const options = {
+            get capture() {
+                eventOptionsSupported = true;
+                return false;
+            }
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        window.addEventListener('test', options, options);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        window.removeEventListener('test', options, options);
+    }
+    catch (_e) {
+        // noop
+    }
+})();
+
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+// IMPORTANT: do not change the property name or the assignment expression.
+// This line will be used in regexes to search for lit-html usage.
+// TODO(justinfagnani): inject version number at build time
+const isBrowser$1 = typeof window !== 'undefined';
+if (isBrowser$1) {
+    // If we run in the browser set version
+    (window['litHtmlVersions'] || (window['litHtmlVersions'] = [])).push('1.1.7');
+}
+
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+var __asyncValues = (undefined && undefined.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+var __asyncValues$1 = (undefined && undefined.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+
+/**
+ * @license
+ * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+/**
+ * Used to clone existing node instead of each time creating new one which is
+ * slower
+ */
+const emptyTemplateNode$1 = document.createElement('template');
+
+const defaultOptions = {
+    element: document.createTextNode(''),
+    axis: 'xy',
+    threshold: 10,
+    onDown(data) { },
+    onMove(data) { },
+    onUp(data) { },
+    onWheel(data) { }
+};
+
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function createCommonjsModule(fn, module) {
@@ -2238,11 +2483,11 @@ var Selection = /*#__PURE__*/Object.freeze({
  * @license   AGPL-3.0 (https://github.com/neuronetio/gantt-schedule-timeline-calendar/blob/master/LICENSE)
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
-const defaultOptions = {
+const defaultOptions$1 = {
     enabled: true,
     bodyClassName: 'gstc-scrolling',
 };
-function Plugin$4(options = defaultOptions) {
+function Plugin$4(options = defaultOptions$1) {
     let vido, api, state;
     let enabled = options.enabled;
     class ChartAction {
@@ -2347,184 +2592,6 @@ var CalendarScroll = /*#__PURE__*/Object.freeze({
   __proto__: null,
   Plugin: Plugin$4
 });
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-/**
- * An expression marker with embedded unique key to avoid collision with
- * possible text in templates.
- */
-const marker = `{{lit-${String(Math.random()).slice(2)}}}`;
-/**
- * Used to clone existing node instead of each time creating new one which is
- * slower
- */
-const markerNode = document.createComment('');
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-/**
- * Used to clone existing node instead of each time creating new one which is
- * slower
- */
-const emptyTemplateNode = document.createElement('template');
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-/**
- * Used to clone text node instead of each time creating new one which is slower
- */
-const emptyTextNode = document.createTextNode('');
-// Detect event listener options support. If the `capture` property is read
-// from the options object, then options are supported. If not, then the third
-// argument to add/removeEventListener is interpreted as the boolean capture
-// value so we should only pass the `capture` property.
-let eventOptionsSupported = false;
-// Wrap into an IIFE because MS Edge <= v41 does not support having try/catch
-// blocks right into the body of a module
-(() => {
-    try {
-        const options = {
-            get capture() {
-                eventOptionsSupported = true;
-                return false;
-            }
-        };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        window.addEventListener('test', options, options);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        window.removeEventListener('test', options, options);
-    }
-    catch (_e) {
-        // noop
-    }
-})();
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-// IMPORTANT: do not change the property name or the assignment expression.
-// This line will be used in regexes to search for lit-html usage.
-// TODO(justinfagnani): inject version number at build time
-const isBrowser$1 = typeof window !== 'undefined';
-if (isBrowser$1) {
-    // If we run in the browser set version
-    (window['litHtmlVersions'] || (window['litHtmlVersions'] = [])).push('1.1.7');
-}
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-var __asyncValues = (undefined && undefined.__asyncValues) || function (o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-};
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-var __asyncValues$1 = (undefined && undefined.__asyncValues) || function (o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-};
-
-/**
- * @license
- * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at
- * http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at
- * http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at
- * http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at
- * http://polymer.github.io/PATENTS.txt
- */
-/**
- * Used to clone existing node instead of each time creating new one which is
- * slower
- */
-const emptyTemplateNode$1 = document.createElement('template');
-
-const defaultOptions$1 = {
-    element: document.createTextNode(''),
-    axis: 'xy',
-    threshold: 10,
-    onDown(data) { },
-    onMove(data) { },
-    onUp(data) { },
-    onWheel(data) { }
-};
 
 /**
  * Weekend highlight plugin

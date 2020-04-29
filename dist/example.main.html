@@ -221,7 +221,7 @@
         classNames: {},
       };
 
-      GSTC.api.stateFromConfigExperimental(config).then((GSTCState) => {
+      GSTC.api.wasmStateFromConfig(config).then((GSTCState) => {
         GSTCState.subscribe('config.plugin.ItemMovement', (itemMovement) => {
           if (!itemMovement || !itemMovement.item) return;
           state.update(`config.chart.items.${itemMovement.item.id}.isResizing`, itemMovement.item.resizing);

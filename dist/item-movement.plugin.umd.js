@@ -16,6 +16,72 @@
   const ITEM = 'chart-timeline-items-row-item';
 
   /**
+   * Schedule - a throttle function that uses requestAnimationFrame to limit the rate at which a function is called.
+   *
+   * @param {function} fn
+   * @returns {function}
+   */
+  /**
+   * Is object - helper function to determine if specified variable is an object
+   *
+   * @param {any} item
+   * @returns {boolean}
+   */
+  function isObject(item) {
+      return item && typeof item === 'object' && !Array.isArray(item);
+  }
+  /**
+   * Merge deep - helper function which will merge objects recursively - creating brand new one - like clone
+   *
+   * @param {object} target
+   * @params {[object]} sources
+   * @returns {object}
+   */
+  function mergeDeep(target, ...sources) {
+      const source = sources.shift();
+      if (isObject(target) && isObject(source)) {
+          for (const key in source) {
+              if (isObject(source[key])) {
+                  if (typeof source[key].clone === 'function') {
+                      target[key] = source[key].clone();
+                  }
+                  else {
+                      if (typeof target[key] === 'undefined') {
+                          target[key] = {};
+                      }
+                      target[key] = mergeDeep(target[key], source[key]);
+                  }
+              }
+              else if (Array.isArray(source[key])) {
+                  target[key] = new Array(source[key].length);
+                  let index = 0;
+                  for (let item of source[key]) {
+                      if (isObject(item)) {
+                          if (typeof item.clone === 'function') {
+                              target[key][index] = item.clone();
+                          }
+                          else {
+                              target[key][index] = mergeDeep({}, item);
+                          }
+                      }
+                      else {
+                          target[key][index] = item;
+                      }
+                      index++;
+                  }
+              }
+              else {
+                  target[key] = source[key];
+              }
+          }
+      }
+      if (!sources.length) {
+          return target;
+      }
+      return mergeDeep(target, ...sources);
+  }
+
+  /**
    * ItemMovement plugin
    *
    * @copyright Rafal Pospiech <https://neuronet.io>
@@ -220,10 +286,11 @@
           const modified = this.data.events[type](this.getEventArgument(items));
           let multi = this.state.multi();
           for (const item of modified) {
-              multi = multi
-                  .update(`config.chart.items.${item.id}.time`, item.time)
-                  .update(`config.chart.items.${item.id}.$data`, item.$data)
-                  .update(`config.chart.items.${item.id}.rowId`, item.rowId);
+              multi = multi.update(`config.chart.items.${item.id}`, (currentItem) => {
+                  // items should be always references - we cannot make a copy of the object because it may lead to troubles
+                  mergeDeep(currentItem, item);
+                  return currentItem;
+              });
           }
           multi.done();
           this.data.moving = modified;

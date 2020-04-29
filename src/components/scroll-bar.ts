@@ -9,7 +9,7 @@
  */
 
 import Action from '@neuronet.io/vido/Action';
-import { ScrollType, Row, Vido, DataChartTimeLevelDate, DataChartTimeLevel } from '../gstc';
+import { ScrollType, Row, Vido, DataChartTimeLevelDate } from '../gstc';
 
 export interface Props {
   type: 'horizontal' | 'vertical';
@@ -218,7 +218,8 @@ export default function ScrollBar(vido: Vido, props: Props) {
       this.pointerDown = this.pointerDown.bind(this);
       this.pointerUp = this.pointerUp.bind(this);
       const pointerMove = this.pointerMove.bind(this);
-      this.pointerMove = schedule((ev) => pointerMove(ev));
+      //this.pointerMove = schedule((ev) => pointerMove(ev));
+      this.pointerMove = pointerMove;
       this.unsub = state.subscribe(`config.scroll.${props.type}`, this.dataChanged.bind(this));
       this.destroy = this.destroy.bind(this);
       element.addEventListener('pointerdown', this.pointerDown);

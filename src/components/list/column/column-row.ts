@@ -35,8 +35,8 @@ class BindElementAction {
 }
 
 export interface Props {
-  rowId: string;
-  columnId: string;
+  row: Row;
+  column: ColumnData;
 }
 
 export default function ListColumnRow(vido: Vido, props: Props) {
@@ -67,12 +67,8 @@ export default function ListColumnRow(vido: Vido, props: Props) {
     state.subscribe('config.components.ListColumnRowExpander', (value) => (ListColumnRowExpanderComponent = value))
   );
 
-  let rowPath = `config.list.rows.${props.rowId}`,
-    row: Row = state.get(rowPath);
-  let colPath = `config.list.columns.data.${props.columnId}`,
-    column: ColumnData = state.get(colPath);
   const styleMap = new StyleMap(
-    column.expander
+    props.column.expander
       ? {
           height: '',
           top: '',
@@ -87,8 +83,7 @@ export default function ListColumnRow(vido: Vido, props: Props) {
         },
     true
   );
-  let rowSub, colSub;
-  const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, { row });
+  const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, { row: props.row });
 
   let className;
   onDestroy(
@@ -99,11 +94,9 @@ export default function ListColumnRow(vido: Vido, props: Props) {
   );
   let classNameCurrent = className;
 
-  const onPropsChange = (changedProps: Props, options) => {
-    if (options.leave || changedProps.rowId === undefined || changedProps.columnId === undefined) {
+  function onPropsChange(changedProps: Props, options) {
+    if (options.leave || changedProps.row === undefined || changedProps.column === undefined) {
       shouldDetach = true;
-      if (rowSub) rowSub();
-      if (colSub) colSub();
       update();
       return;
     }
@@ -112,91 +105,69 @@ export default function ListColumnRow(vido: Vido, props: Props) {
     for (const prop in props) {
       actionProps[prop] = props[prop];
     }
-    const rowId = props.rowId;
-    const columnId = props.columnId;
-    if (rowSub) rowSub();
-    if (colSub) colSub();
-    rowPath = `config.list.rows.${rowId}`;
-    colPath = `config.list.columns.data.${columnId}`;
-    rowSub = state.subscribeAll(
-      [rowPath, colPath, 'config.list.expander'],
-      (bulk) => {
-        column = state.get(colPath);
-        row = state.get(rowPath);
-        if (!column || !row || !row.$data) {
-          shouldDetach = true;
-          update();
-          return;
-        }
-        if (column === undefined || row === undefined) return;
-        const expander = state.get('config.list.expander');
-        // @ts-ignore
-        styleMap.setStyle({}); // we must reset style because of user specified styling
-        styleMap.style['height'] = row.$data.outerHeight + 'px';
-        styleMap.style['--height'] = row.$data.outerHeight + 'px';
-        if (column.expander) {
-          styleMap.style['--expander-padding-width'] = expander.padding * (row.$data.parents.length + 1) + 'px';
-        }
-        const rows = state.get('config.list.rows');
-        for (const parentId of row.$data.parents) {
-          const parent = rows[parentId];
-          if (typeof parent.style === 'object' && parent.style.constructor.name === 'Object') {
-            if (typeof parent.style.children === 'object') {
-              const childrenStyle = parent.style.children;
-              for (const name in childrenStyle) {
-                styleMap.style[name] = childrenStyle[name];
-              }
-            }
-          }
-        }
-        if (
-          typeof row.style === 'object' &&
-          row.style.constructor.name === 'Object' &&
-          typeof row.style.current === 'object'
-        ) {
-          const rowCurrentStyle = row.style.current;
-          for (const name in rowCurrentStyle) {
-            styleMap.style[name] = rowCurrentStyle[name];
-          }
-        }
-        if (row.classNames && row.classNames.length) {
-          classNameCurrent = className + ' ' + row.classNames.join(' ');
-        } else {
-          classNameCurrent = className;
-        }
-        update();
-      },
-      { bulk: true }
-    );
-
-    if (ListColumnRowExpander) {
-      ListColumnRowExpander.change({ row });
-    }
-
-    colSub = state.subscribe(colPath, (val) => {
-      column = val;
+    if (!props.column || !props.row || !props.row.$data) {
+      shouldDetach = true;
       update();
-    });
-  };
+      return;
+    }
+    if (props.column === undefined || props.row === undefined) return;
+    const expander = state.get('config.list.expander');
+    // @ts-ignore
+    styleMap.setStyle({}); // we must reset style because of user specified styling
+    styleMap.style['height'] = props.row.$data.outerHeight + 'px';
+    styleMap.style['--height'] = props.row.$data.outerHeight + 'px';
+    if (props.column.expander) {
+      styleMap.style['--expander-padding-width'] = expander.padding * (props.row.$data.parents.length + 1) + 'px';
+    }
+    const rows = state.get('config.list.rows');
+    for (const parentId of props.row.$data.parents) {
+      const parent = rows[parentId];
+      if (typeof parent.style === 'object' && parent.style.constructor.name === 'Object') {
+        if (typeof parent.style.children === 'object') {
+          const childrenStyle = parent.style.children;
+          for (const name in childrenStyle) {
+            styleMap.style[name] = childrenStyle[name];
+          }
+        }
+      }
+    }
+    if (
+      typeof props.row.style === 'object' &&
+      props.row.style.constructor.name === 'Object' &&
+      typeof props.row.style.current === 'object'
+    ) {
+      const rowCurrentStyle = props.row.style.current;
+      for (const name in rowCurrentStyle) {
+        styleMap.style[name] = rowCurrentStyle[name];
+      }
+    }
+    if (props.row.classNames && props.row.classNames.length) {
+      classNameCurrent = className + ' ' + props.row.classNames.join(' ');
+    } else {
+      classNameCurrent = className;
+    }
+    if (ListColumnRowExpander) {
+      ListColumnRowExpander.change(props);
+    }
+    update();
+  }
   onChange(onPropsChange);
 
   onDestroy(() => {
     if (ListColumnRowExpander) ListColumnRowExpander.destroy();
-    colSub();
-    rowSub();
   });
   const componentActions = api.getActions(componentName);
 
   function getHtml() {
-    if (row === undefined) return null;
-    if (typeof column.data === 'function') return unsafeHTML(column.data(row));
-    return unsafeHTML(row[column.data]);
+    if (props.row === undefined) return null;
+    if (typeof props.column.data === 'function') return unsafeHTML(props.column.data(props.row));
+    return unsafeHTML(props.row[props.column.data]);
   }
 
   function getText() {
-    if (row === undefined) return null;
-    if (typeof column.data === 'function') return column.data(row);
-    return row[column.data];
+    if (props.row === undefined) return null;
+    if (typeof props.column.data === 'function') return props.column.data(props.row);
+    return props.row[props.column.data];
   }
 
   if (!componentActions.includes(BindElementAction)) componentActions.push(BindElementAction);
@@ -206,9 +177,9 @@ export default function ListColumnRow(vido: Vido, props: Props) {
     wrapper(
       html`
         <div detach=${detach} class=${classNameCurrent} style=${styleMap} data-actions=${actions}>
-          ${column.expander ? ListColumnRowExpander.html() : null}
+          ${props.column.expander ? ListColumnRowExpander.html() : null}
           <div class=${className + '-content'}>
-            ${column.isHTML ? getHtml() : getText()}
+            ${props.column.isHTML ? getHtml() : getText()}
           </div>
         </div>
       `,

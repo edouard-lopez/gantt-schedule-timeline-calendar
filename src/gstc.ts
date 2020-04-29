@@ -180,10 +180,11 @@ export interface ColumnDataHeader {
 export interface ColumnData {
   id: string;
   data: string | ColumnDataFunctionString | ColumnDataFunctionTemplate;
-  isHTML: boolean;
   width: number;
   header: ColumnDataHeader;
-  expander: boolean;
+  isHTML?: boolean;
+  expander?: boolean;
+  minWidth?: number;
 }
 
 export interface ColumnsData {

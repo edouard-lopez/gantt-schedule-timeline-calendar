@@ -14,6 +14,7 @@ import { ITEM, Point } from './timeline-pointer.plugin';
 import { Dayjs } from 'dayjs';
 import { Api } from '../api/api';
 import DeepState from 'deep-state-observer';
+import { mergeDeep } from '@neuronet.io/vido/helpers';
 
 export interface SnapArg {
   item: Item;
@@ -357,10 +358,11 @@ class ItemMovement {
     const modified = this.data.events[type](this.getEventArgument(items));
     let multi = this.state.multi();
     for (const item of modified) {
-      multi = multi
-        .update(`config.chart.items.${item.id}.time`, item.time)
-        .update(`config.chart.items.${item.id}.$data`, item.$data)
-        .update(`config.chart.items.${item.id}.rowId`, item.rowId);
+      multi = multi.update(`config.chart.items.${item.id}`, (currentItem) => {
+        // items should be always references - we cannot make a copy of the object because it may lead to troubles
+        mergeDeep(currentItem, item);
+        return currentItem;
+      });
     }
     multi.done();
     this.data.moving = modified;

@@ -5995,8 +5995,8 @@
 	        api.recalculateRowsPercents(rowsWithParentsExpanded, verticalArea);
 	        state
 	            .multi()
-	            .update('$data.list.rowsHeight', rowsHeight)
-	            .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
+	            .update('$data.list.rowsHeight', rowsHeight, { force: true })
+	            .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded, { force: true })
 	            .done();
 	        update();
 	    }
@@ -6005,30 +6005,9 @@
 	        'config.chart.items.*.height',
 	        'config.chart.items.*.rowId',
 	        'config.list.rows.*.height',
+	        'config.list.rows.*.$data.outerHeight',
 	        'config.scroll.vertical.area',
 	    ], prepareExpandedCalculateRowHeightsAndFixOverlapped, { bulk: true }));
-	    function calculateHeightRelatedThings() {
-	        const rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
-	        const rowsHeight = state.get('$data.list.rowsHeight');
-	        if (rowsHeight === lastRowsHeight)
-	            return;
-	        lastRowsHeight = rowsHeight;
-	        const innerHeight = state.get('$data.innerHeight');
-	        const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
-	        state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight);
-	    }
-	    onDestroy(state.subscribeAll(['config.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
-	    function calculateVisibleRowsHeights() {
-	        const visibleRows = state.get('$data.list.visibleRows');
-	        let height = 0;
-	        for (const row of visibleRows) {
-	            height += api.recalculateRowHeight(row);
-	        }
-	        state.update('$data.list.visibleRowsHeight', height);
-	    }
-	    onDestroy(state.subscribeAll(['config.chart.items.*.time', 'config.chart.items.*.$data.position', '$data.list.visibleRows'], calculateVisibleRowsHeights, {
-	        bulk: true,
-	    }));
 	    function getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded) {
 	        if (rowsWithParentsExpanded.length === 0)
 	            return 0;
@@ -6045,11 +6024,33 @@
 	        }
 	        state
 	            .multi()
-	            .update('config.scroll.vertical.lastPageSize', currentHeight)
-	            .update('config.scroll.vertical.lastPageCount', count)
+	            .update('config.scroll.vertical.lastPageSize', currentHeight, { force: true })
+	            .update('config.scroll.vertical.lastPageCount', count, { force: true })
 	            .done();
 	        return currentHeight;
 	    }
+	    function calculateHeightRelatedThings() {
+	        const rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
+	        const rowsHeight = state.get('$data.list.rowsHeight');
+	        if (rowsHeight === lastRowsHeight)
+	            return;
+	        lastRowsHeight = rowsHeight;
+	        const innerHeight = state.get('$data.innerHeight');
+	        const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
+	        state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight, { force: true });
+	    }
+	    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
+	    function calculateVisibleRowsHeights() {
+	        const visibleRows = state.get('$data.list.visibleRows');
+	        let height = 0;
+	        for (const row of visibleRows) {
+	            height += api.recalculateRowHeight(row);
+	        }
+	        state.update('$data.list.visibleRowsHeight', height);
+	    }
+	    onDestroy(state.subscribeAll(['config.chart.items.*.time', 'config.chart.items.*.$data.position', '$data.list.visibleRows'], calculateVisibleRowsHeights, {
+	        bulk: true,
+	    }));
 	    function generateVisibleRowsAndItems() {
 	        const visibleRows = api.getVisibleRows(state.get('$data.list.rowsWithParentsExpanded'));
 	        const currentVisibleRows = state.get('$data.list.visibleRows');
@@ -6298,6 +6299,7 @@
 	            return multi;
 	        if (!time.levels || !time.levels[time.level])
 	            return multi;
+	        const spacing = state.get('config.chart.spacing') || 0;
 	        for (const item of visibleItems) {
 	            const row = rows[item.rowId];
 	            if (!row || !row.$data)
@@ -6311,16 +6313,15 @@
 	                position.right === right &&
 	                position.actualTop === actualTop &&
 	                position.viewTop === viewTop) {
-	                continue; // prevent infinite loop
+	                continue; // prevent infinite loop because we are watching items too
 	            }
 	            multi = multi.update(`config.chart.items.${item.id}.$data`, function ($data) {
 	                $data.position.left = left;
 	                $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
 	                $data.position.right = right;
 	                $data.position.actualRight = api.time.limitOffsetPxToView(right, time);
-	                $data.width = right - left - (state.get('config.chart.spacing') || 0);
-	                $data.actualWidth =
-	                    $data.position.actualRight - $data.position.actualLeft - (state.get('config.chart.spacing') || 0);
+	                $data.width = right - left - spacing;
+	                $data.actualWidth = $data.position.actualRight - $data.position.actualLeft - spacing;
 	                $data.position.actualTop = actualTop;
 	                $data.position.viewTop = viewTop;
 	                return $data;
@@ -6872,7 +6873,8 @@
 	            this.pointerDown = this.pointerDown.bind(this);
 	            this.pointerUp = this.pointerUp.bind(this);
 	            const pointerMove = this.pointerMove.bind(this);
-	            this.pointerMove = schedule((ev) => pointerMove(ev));
+	            //this.pointerMove = schedule((ev) => pointerMove(ev));
+	            this.pointerMove = pointerMove;
 	            this.unsub = state.subscribe(`config.scroll.${props.type}`, this.dataChanged.bind(this));
 	            this.destroy = this.destroy.bind(this);
 	            element.addEventListener('pointerdown', this.pointerDown);
@@ -7050,11 +7052,10 @@
 	    }));
 	    let listColumns = [];
 	    function onListColumnsDataChange(data) {
-	        const destroy = reuseComponents(listColumns, Object.values(data), (column) => ({ columnId: column.id }), ListColumnComponent);
+	        reuseComponents(listColumns, Object.values(data), (column) => ({ column }), ListColumnComponent);
 	        update();
-	        return destroy;
 	    }
-	    onDestroy(state.subscribe('config.list.columns.data;', onListColumnsDataChange));
+	    onDestroy(state.subscribe('config.list.columns.data', onListColumnsDataChange));
 	    const styleMap = new StyleMap({
 	        height: '',
 	        ['--expander-padding-width']: '',
@@ -7154,61 +7155,34 @@
 	    let className, classNameContainer, calculatedWidth;
 	    const widthStyleMap = new StyleMap({ width: '', ['--width']: '' });
 	    const containerStyleMap = new StyleMap({ width: '', height: '' });
-	    let column, columnPath = `config.list.columns.data.${props.columnId}`;
-	    let columnSub = state.subscribe(columnPath, function columnChanged(val) {
-	        column = val;
-	        update();
-	    });
 	    let width;
 	    function calculateStyle() {
 	        const list = state.get('config.list');
-	        calculatedWidth = list.columns.data[column.id].width * list.columns.percent * 0.01;
+	        calculatedWidth = list.columns.data[props.column.id].width * list.columns.percent * 0.01;
 	        width = calculatedWidth;
 	        const height = state.get('$data.innerHeight');
 	        widthStyleMap.style.width = width + 'px';
 	        widthStyleMap.style['--width'] = width + 'px';
 	        containerStyleMap.style.height = height + 'px';
 	    }
-	    let styleSub = state.subscribeAll([
+	    onDestroy(state.subscribeAll([
 	        'config.list.columns.percent',
 	        'config.list.columns.resizer.width',
-	        `config.list.columns.data.${column.id}.width`,
 	        '$data.chart.dimensions.width',
 	        '$data.innerHeight',
 	        '$data.list.width',
 	        '$data.list.visibleRowsHeight',
-	    ], calculateStyle, { bulk: true });
-	    const ListColumnHeader = createComponent(ListColumnHeaderComponent, { columnId: props.columnId });
+	    ], calculateStyle, { bulk: true }));
+	    const ListColumnHeader = createComponent(ListColumnHeaderComponent, props);
 	    onDestroy(ListColumnHeader.destroy);
 	    onChange((changedProps) => {
 	        props = changedProps;
 	        for (const prop in props) {
 	            actionProps[prop] = props[prop];
 	        }
-	        if (columnSub)
-	            columnSub();
-	        ListColumnHeader.change({ columnId: props.columnId });
-	        columnPath = `config.list.columns.data.${props.columnId}`;
-	        columnSub = state.subscribe(columnPath, function columnChanged(val) {
-	            column = val;
-	            update();
-	        });
-	        if (styleSub)
-	            styleSub();
-	        styleSub = state.subscribeAll([
-	            'config.list.columns.percent',
-	            'config.list.columns.resizer.width',
-	            `config.list.columns.data.${column.id}.width`,
-	            '$data.chart.dimensions.width',
-	            '$data.innerHeight',
-	            '$data.list.width',
-	            '$data.list.visibleRowsHeight',
-	        ], calculateStyle, { bulk: true });
+	        calculateStyle();
 	        ListColumnHeader.change(props);
-	    });
-	    onDestroy(() => {
-	        columnSub();
-	        styleSub();
+	        visibleRowsChange();
 	    });
 	    onDestroy(state.subscribe('config.classNames', (value) => {
 	        className = api.getClass(componentName);
@@ -7218,7 +7192,7 @@
 	    const visibleRows = [];
 	    function visibleRowsChange() {
 	        const val = state.get('$data.list.visibleRows') || [];
-	        reuseComponents(visibleRows, val, (row) => row && { columnId: props.columnId, rowId: row.id, width }, ListColumnRowComponent, false);
+	        reuseComponents(visibleRows, val, (row) => row && { column: props.column, row, width }, ListColumnRowComponent, false);
 	    }
 	    onDestroy(state.subscribeAll([
 	        '$data.list.visibleRows;',
@@ -7231,17 +7205,14 @@
 	        visibleRows.forEach((row) => row.destroy());
 	        componentsSub.forEach((unsub) => unsub());
 	    });
-	    function getRowHtml(row) {
-	        return row.html();
-	    }
 	    componentActions.push(BindElementAction);
-	    const headerActions = Actions.create(componentActions, { column, state: state, api: api });
+	    const headerActions = Actions.create(componentActions, { column: props.column, state: state, api: api });
 	    const rowActions = Actions.create(rowsActions, { api, state });
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-actions=${headerActions} style=${widthStyleMap}>
           ${ListColumnHeader.html()}
           <div class=${classNameContainer} style=${containerStyleMap} data-actions=${rowActions}>
-            ${visibleRows.map(getRowHtml)}
+            ${visibleRows.map((row) => row.html())}
           </div>
         </div>
       `, { vido, props, templateProps });
@@ -7266,32 +7237,22 @@
 	    const componentsSubs = [];
 	    let ListColumnHeaderResizerComponent;
 	    componentsSubs.push(state.subscribe('config.components.ListColumnHeaderResizer', (value) => (ListColumnHeaderResizerComponent = value)));
-	    const ListColumnHeaderResizer = createComponent(ListColumnHeaderResizerComponent, { columnId: props.columnId });
+	    const ListColumnHeaderResizer = createComponent(ListColumnHeaderResizerComponent, props);
 	    let ListColumnRowExpanderComponent;
 	    componentsSubs.push(state.subscribe('config.components.ListColumnRowExpander', (value) => (ListColumnRowExpanderComponent = value)));
-	    const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, {});
+	    const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, props);
 	    onDestroy(() => {
 	        ListColumnHeaderResizer.destroy();
 	        ListColumnRowExpander.destroy();
 	        componentsSubs.forEach((unsub) => unsub());
 	    });
-	    let column;
-	    let columnSub = state.subscribe(`config.list.columns.data.${props.columnId}`, (val) => {
-	        column = val;
-	        update();
-	    });
-	    onDestroy(columnSub);
 	    onChange((changedProps) => {
 	        props = changedProps;
 	        for (const prop in props) {
 	            actionProps[prop] = props[prop];
 	        }
-	        if (columnSub)
-	            columnSub();
-	        columnSub = state.subscribe(`config.list.columns.data.${props.columnId}`, (val) => {
-	            column = val;
-	            update();
-	        });
+	        ListColumnHeaderResizer.change(props);
+	        ListColumnRowExpander.change(props);
 	    });
 	    let className, contentClass;
 	    onDestroy(state.subscribe('config.classNames', () => {
@@ -7313,21 +7274,21 @@
 	    function withExpander() {
 	        return html `
       <div class=${contentClass}>
-        ${ListColumnRowExpander.html()}${ListColumnHeaderResizer.html(column)}
+        ${ListColumnRowExpander.html()}${ListColumnHeaderResizer.html(props.column)}
       </div>
     `;
 	    }
 	    function withoutExpander() {
 	        return html `
       <div class=${contentClass}>
-        ${ListColumnHeaderResizer.html(column)}
+        ${ListColumnHeaderResizer.html(props.column)}
       </div>
     `;
 	    }
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div class=${className} style=${styleMap} data-actions=${actions}>
-          ${cache(column.expander ? withExpander() : withoutExpander())}
+          ${cache(props.column.expander ? withExpander() : withoutExpander())}
         </div>
       `, { vido, props, templateProps });
 	}
@@ -7342,17 +7303,12 @@
 	 * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
 	 */
 	function ListColumnHeaderResizer(vido, props) {
-	    const { api, state, onDestroy, update, html, Actions, PointerAction, cache, StyleMap } = vido;
+	    const { api, state, onDestroy, update, html, Actions, onChange, PointerAction, cache, StyleMap } = vido;
 	    const componentName = 'list-column-header-resizer';
 	    const componentActions = api.getActions(componentName);
 	    const componentDotsActions = api.getActions(componentName + '-dots');
 	    let wrapper;
 	    onDestroy(state.subscribe('config.wrappers.ListColumnHeaderResizer', (value) => (wrapper = value)));
-	    let column;
-	    onDestroy(state.subscribe(`config.list.columns.data.${props.columnId}`, (val) => {
-	        column = val;
-	        update();
-	    }));
 	    let className, containerClass, dotsClass, dotClass, calculatedWidth;
 	    const dotsStyleMap = new StyleMap({ width: '' });
 	    let inRealTime = false;
@@ -7363,19 +7319,21 @@
 	        dotClass = api.getClass(componentName + '-dots-dot');
 	        update();
 	    }));
-	    onDestroy(state.subscribeAll([
-	        `config.list.columns.data.${column.id}.width`,
-	        'config.list.columns.percent',
-	        'config.list.columns.resizer.width',
-	        'config.list.columns.resizer.inRealTime',
-	    ], (value, path) => {
+	    function updateData() {
+	        if (!props.column)
+	            return;
 	        const list = state.get('config.list');
-	        calculatedWidth = column.width * list.columns.percent * 0.01;
+	        calculatedWidth = props.column.width * list.columns.percent * 0.01;
 	        dotsStyleMap.style['--width'] = list.columns.resizer.width + 'px';
 	        inRealTime = list.columns.resizer.inRealTime;
 	        state.update('$data.list.width', calculatedWidth);
 	        update();
-	    }));
+	    }
+	    onChange((changedProps) => {
+	        props = changedProps;
+	        updateData();
+	    });
+	    onDestroy(state.subscribeAll(['config.list.columns.percent', 'config.list.columns.resizer.width', 'config.list.columns.resizer.inRealTime'], updateData));
 	    let dots = [1, 2, 3, 4, 5, 6, 7, 8];
 	    onDestroy(state.subscribe('config.list.columns.resizer.dots', (value) => {
 	        dots = [];
@@ -7391,24 +7349,23 @@
 	      '--left': left + 'px'
 	    });*/
 	    let left = calculatedWidth;
-	    const columnWidthPath = `config.list.columns.data.${column.id}.width`;
 	    const actionProps = {
-	        column,
+	        column: props.column,
 	        api,
 	        state,
 	        pointerOptions: {
 	            axis: 'x',
 	            onMove: function onMove({ movementX }) {
 	                let minWidth = state.get('config.list.columns.minWidth');
-	                if (typeof column.minWidth === 'number') {
-	                    minWidth = column.minWidth;
+	                if (typeof props.column.minWidth === 'number') {
+	                    minWidth = props.column.minWidth;
 	                }
 	                left += movementX;
 	                if (left < minWidth) {
 	                    left = minWidth;
 	                }
 	                if (inRealTime) {
-	                    state.update(columnWidthPath, left);
+	                    state.update(`config.list.columns.data.${props.column.id}.width`, left);
 	                }
 	            },
 	        },
@@ -7419,7 +7376,7 @@
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-actions=${actions}>
           <div class=${containerClass}>
-            ${cache(column.header.html ? html ` ${column.header.html} ` : column.header.content)}
+            ${cache(props.column.header.html ? unsafeHTML(props.column.header.html) : props.column.header.content)}
           </div>
           <div class=${dotsClass} style=${dotsStyleMap} data-actions=${dotsActions}>
             ${dots.map((dot) => html ` <div class=${dotClass} /> `)}
@@ -7471,9 +7428,7 @@
 	    onDestroy(state.subscribe('config.wrappers.ListColumnRow', (value) => (wrapper = value)));
 	    let ListColumnRowExpanderComponent;
 	    onDestroy(state.subscribe('config.components.ListColumnRowExpander', (value) => (ListColumnRowExpanderComponent = value)));
-	    let rowPath = `config.list.rows.${props.rowId}`, row = state.get(rowPath);
-	    let colPath = `config.list.columns.data.${props.columnId}`, column = state.get(colPath);
-	    const styleMap = new StyleMap(column.expander
+	    const styleMap = new StyleMap(props.column.expander
 	        ? {
 	            height: '',
 	            top: '',
@@ -7486,21 +7441,16 @@
 	            top: '',
 	            ['--height']: '',
 	        }, true);
-	    let rowSub, colSub;
-	    const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, { row });
+	    const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, { row: props.row });
 	    let className;
 	    onDestroy(state.subscribe('config.classNames', (value) => {
 	        className = api.getClass(componentName);
 	        update();
 	    }));
 	    let classNameCurrent = className;
-	    const onPropsChange = (changedProps, options) => {
-	        if (options.leave || changedProps.rowId === undefined || changedProps.columnId === undefined) {
+	    function onPropsChange(changedProps, options) {
+	        if (options.leave || changedProps.row === undefined || changedProps.column === undefined) {
 	            shouldDetach = true;
-	            if (rowSub)
-	                rowSub();
-	            if (colSub)
-	                colSub();
 	            update();
 	            return;
 	        }
@@ -7509,98 +7459,80 @@
 	        for (const prop in props) {
 	            actionProps[prop] = props[prop];
 	        }
-	        const rowId = props.rowId;
-	        const columnId = props.columnId;
-	        if (rowSub)
-	            rowSub();
-	        if (colSub)
-	            colSub();
-	        rowPath = `config.list.rows.${rowId}`;
-	        colPath = `config.list.columns.data.${columnId}`;
-	        rowSub = state.subscribeAll([rowPath, colPath, 'config.list.expander'], (bulk) => {
-	            column = state.get(colPath);
-	            row = state.get(rowPath);
-	            if (!column || !row || !row.$data) {
-	                shouldDetach = true;
-	                update();
-	                return;
-	            }
-	            if (column === undefined || row === undefined)
-	                return;
-	            const expander = state.get('config.list.expander');
-	            // @ts-ignore
-	            styleMap.setStyle({}); // we must reset style because of user specified styling
-	            styleMap.style['height'] = row.$data.outerHeight + 'px';
-	            styleMap.style['--height'] = row.$data.outerHeight + 'px';
-	            if (column.expander) {
-	                styleMap.style['--expander-padding-width'] = expander.padding * (row.$data.parents.length + 1) + 'px';
-	            }
-	            const rows = state.get('config.list.rows');
-	            for (const parentId of row.$data.parents) {
-	                const parent = rows[parentId];
-	                if (typeof parent.style === 'object' && parent.style.constructor.name === 'Object') {
-	                    if (typeof parent.style.children === 'object') {
-	                        const childrenStyle = parent.style.children;
-	                        for (const name in childrenStyle) {
-	                            styleMap.style[name] = childrenStyle[name];
-	                        }
+	        if (!props.column || !props.row || !props.row.$data) {
+	            shouldDetach = true;
+	            update();
+	            return;
+	        }
+	        if (props.column === undefined || props.row === undefined)
+	            return;
+	        const expander = state.get('config.list.expander');
+	        // @ts-ignore
+	        styleMap.setStyle({}); // we must reset style because of user specified styling
+	        styleMap.style['height'] = props.row.$data.outerHeight + 'px';
+	        styleMap.style['--height'] = props.row.$data.outerHeight + 'px';
+	        if (props.column.expander) {
+	            styleMap.style['--expander-padding-width'] = expander.padding * (props.row.$data.parents.length + 1) + 'px';
+	        }
+	        const rows = state.get('config.list.rows');
+	        for (const parentId of props.row.$data.parents) {
+	            const parent = rows[parentId];
+	            if (typeof parent.style === 'object' && parent.style.constructor.name === 'Object') {
+	                if (typeof parent.style.children === 'object') {
+	                    const childrenStyle = parent.style.children;
+	                    for (const name in childrenStyle) {
+	                        styleMap.style[name] = childrenStyle[name];
 	                    }
 	                }
 	            }
-	            if (typeof row.style === 'object' &&
-	                row.style.constructor.name === 'Object' &&
-	                typeof row.style.current === 'object') {
-	                const rowCurrentStyle = row.style.current;
-	                for (const name in rowCurrentStyle) {
-	                    styleMap.style[name] = rowCurrentStyle[name];
-	                }
-	            }
-	            if (row.classNames && row.classNames.length) {
-	                classNameCurrent = className + ' ' + row.classNames.join(' ');
-	            }
-	            else {
-	                classNameCurrent = className;
-	            }
-	            update();
-	        }, { bulk: true });
-	        if (ListColumnRowExpander) {
-	            ListColumnRowExpander.change({ row });
 	        }
-	        colSub = state.subscribe(colPath, (val) => {
-	            column = val;
-	            update();
-	        });
-	    };
+	        if (typeof props.row.style === 'object' &&
+	            props.row.style.constructor.name === 'Object' &&
+	            typeof props.row.style.current === 'object') {
+	            const rowCurrentStyle = props.row.style.current;
+	            for (const name in rowCurrentStyle) {
+	                styleMap.style[name] = rowCurrentStyle[name];
+	            }
+	        }
+	        if (props.row.classNames && props.row.classNames.length) {
+	            classNameCurrent = className + ' ' + props.row.classNames.join(' ');
+	        }
+	        else {
+	            classNameCurrent = className;
+	        }
+	        if (ListColumnRowExpander) {
+	            ListColumnRowExpander.change(props);
+	        }
+	        update();
+	    }
 	    onChange(onPropsChange);
 	    onDestroy(() => {
 	        if (ListColumnRowExpander)
 	            ListColumnRowExpander.destroy();
-	        colSub();
-	        rowSub();
 	    });
 	    const componentActions = api.getActions(componentName);
 	    function getHtml() {
-	        if (row === undefined)
+	        if (props.row === undefined)
 	            return null;
-	        if (typeof column.data === 'function')
-	            return unsafeHTML(column.data(row));
-	        return unsafeHTML(row[column.data]);
+	        if (typeof props.column.data === 'function')
+	            return unsafeHTML(props.column.data(props.row));
+	        return unsafeHTML(props.row[props.column.data]);
 	    }
 	    function getText() {
-	        if (row === undefined)
+	        if (props.row === undefined)
 	            return null;
-	        if (typeof column.data === 'function')
-	            return column.data(row);
-	        return row[column.data];
+	        if (typeof props.column.data === 'function')
+	            return props.column.data(props.row);
+	        return props.row[props.column.data];
 	    }
 	    if (!componentActions.includes(BindElementAction$1))
 	        componentActions.push(BindElementAction$1);
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div detach=${detach} class=${classNameCurrent} style=${styleMap} data-actions=${actions}>
-          ${column.expander ? ListColumnRowExpander.html() : null}
+          ${props.column.expander ? ListColumnRowExpander.html() : null}
           <div class=${className + '-content'}>
-            ${column.isHTML ? getHtml() : getText()}
+            ${props.column.isHTML ? getHtml() : getText()}
           </div>
         </div>
       `, { vido, props, templateProps });
@@ -8221,9 +8153,6 @@
 	    const rowsWithCells = [];
 	    const formatCache = new Map();
 	    const styleMap = new StyleMap({});
-	    /**
-	     * Generate cells
-	     */
 	    function generateCells() {
 	        const width = state.get('$data.chart.dimensions.width');
 	        const height = state.get('$data.innerHeight');
@@ -8262,6 +8191,7 @@
 	        state.update('$data.chart.grid.rowsWithCells', rowsWithCells);
 	    }
 	    onDestroy(state.subscribeAll([
+	        '$data.list.rowsHeight',
 	        '$data.list.visibleRows;',
 	        '$data.list.visibleRowsHeight',
 	        '$data.chart.items.*.rowId',
@@ -8272,10 +8202,6 @@
 	    ], generateCells, {
 	        bulk: true,
 	    }));
-	    /**
-	     * Generate rows components
-	     * @param {array} rowsWithCells
-	     */
 	    function generateRowsComponents(rowsWithCells) {
 	        reuseComponents(rowsComponents, rowsWithCells || [], (row) => row, GridRowComponent, false);
 	        update();
@@ -10081,6 +10007,7 @@
 	    debug: false,
 	    data: undefined,
 	    queue: false,
+	    force: false,
 	};
 	class DeepState {
 	    constructor(data = {}, options = defaultOptions$1) {
@@ -10097,9 +10024,9 @@
 	        this.pathSet = ObjectPath.set;
 	        this.scan = new WildcardObject(this.data, this.options.delimeter, this.options.wildcard);
 	    }
-	    initExperimentalMatcher(pathToWasm) {
+	    loadWasmMatcher(pathToWasmFile) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            yield init(pathToWasm);
+	            yield init(pathToWasmFile);
 	            this.is_match = is_match;
 	            this.scan = new WildcardObject(this.data, this.options.delimeter, this.options.wildcard, this.is_match);
 	        });
@@ -10706,9 +10633,11 @@
 	        const bulk = {};
 	        for (const path in scanned) {
 	            const split = this.split(path);
-	            const { newValue } = this.getUpdateValues(scanned[path], split, fn);
-	            this.pathSet(split, newValue, this.data);
-	            bulk[path] = newValue;
+	            const { oldValue, newValue } = this.getUpdateValues(scanned[path], split, fn);
+	            if (!this.same(newValue, oldValue) || options.force) {
+	                this.pathSet(split, newValue, this.data);
+	                bulk[path] = newValue;
+	            }
 	        }
 	        const groupedListenersPack = [];
 	        const waitingPaths = [];
@@ -10751,7 +10680,7 @@
 	        this.notifyOnly(updatePath, newValue, options);
 	        this.executeWaitingListeners(updatePath);
 	    }
-	    update(updatePath, fnOrValue, options = defaultUpdateOptions, multi = false) {
+	    update(updatePath, fnOrValue, options = Object.assign({}, defaultUpdateOptions), multi = false) {
 	        const jobsRunning = this.jobsRunning;
 	        if ((this.options.queue || options.queue) && jobsRunning) {
 	            if (jobsRunning > this.options.maxSimultaneousJobs) {
@@ -10780,7 +10709,7 @@
 	                newValue,
 	            });
 	        }
-	        if (this.same(newValue, oldValue)) {
+	        if (this.same(newValue, oldValue) && !options.force) {
 	            --this.jobsRunning;
 	            if (multi)
 	                return function () {
@@ -10915,18 +10844,18 @@
 	    // @ts-ignore
 	    return (this.state = new DeepState(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 }));
 	}
-	function stateFromConfigExperimental(userConfig) {
+	function wasmStateFromConfig(userConfig, wasmFile = './wildcard_matcher_bg.wasm') {
 	    return __awaiter(this, void 0, void 0, function* () {
 	        // @ts-ignore
 	        this.state = new DeepState(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 });
-	        yield this.state.initExperimentalMatcher('./wildcard_matcher_bg.wasm');
+	        yield this.state.loadWasmMatcher(wasmFile);
 	        return this.state;
 	    });
 	}
 	const publicApi = {
 	    name: lib,
 	    stateFromConfig,
-	    stateFromConfigExperimental,
+	    wasmStateFromConfig,
 	    merge: mergeDeep$1,
 	    date(time) {
 	        return time ? dayjs_min(time) : dayjs_min();

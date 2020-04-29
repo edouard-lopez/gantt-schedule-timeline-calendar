@@ -137,10 +137,11 @@ export interface ColumnDataHeader {
 export interface ColumnData {
     id: string;
     data: string | ColumnDataFunctionString | ColumnDataFunctionTemplate;
-    isHTML: boolean;
     width: number;
     header: ColumnDataHeader;
-    expander: boolean;
+    isHTML?: boolean;
+    expander?: boolean;
+    minWidth?: number;
 }
 export interface ColumnsData {
     [id: string]: ColumnData;
@@ -506,7 +507,7 @@ declare namespace GSTC {
     var api: {
         name: string;
         stateFromConfig: typeof import("./api/api").stateFromConfig;
-        stateFromConfigExperimental: typeof import("./api/api").stateFromConfigExperimental;
+        wasmStateFromConfig: typeof import("./api/api").wasmStateFromConfig;
         merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
         date(time: any): Dayjs;
         setPeriod(period: OpUnitType): number;

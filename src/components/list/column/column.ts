@@ -8,7 +8,8 @@
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
 
-import { Vido, Row } from '../../../gstc';
+import { Vido, Row, ColumnData } from '../../../gstc';
+import { mergeDeep } from '@neuronet.io/vido/helpers';
 
 /**
  * Bind element action
@@ -35,7 +36,7 @@ class BindElementAction {
 }
 
 export interface Props {
-  columnId: string;
+  column: ColumnData;
 }
 
 export default function ListColumn(vido: Vido, props: Props) {
@@ -63,60 +64,21 @@ export default function ListColumn(vido: Vido, props: Props) {
   const widthStyleMap = new StyleMap({ width: '', ['--width' as any]: '' });
   const containerStyleMap = new StyleMap({ width: '', height: '' });
 
-  let column,
-    columnPath = `config.list.columns.data.${props.columnId}`;
-
-  let columnSub = state.subscribe(columnPath, function columnChanged(val) {
-    column = val;
-    update();
-  });
-
   let width;
   function calculateStyle() {
     const list = state.get('config.list');
-    calculatedWidth = list.columns.data[column.id].width * list.columns.percent * 0.01;
+    calculatedWidth = list.columns.data[props.column.id].width * list.columns.percent * 0.01;
     width = calculatedWidth;
     const height = state.get('$data.innerHeight');
     widthStyleMap.style.width = width + 'px';
     widthStyleMap.style['--width'] = width + 'px';
     containerStyleMap.style.height = height + 'px';
   }
-  let styleSub = state.subscribeAll(
-    [
-      'config.list.columns.percent',
-      'config.list.columns.resizer.width',
-      `config.list.columns.data.${column.id}.width`,
-      '$data.chart.dimensions.width',
-      '$data.innerHeight',
-      '$data.list.width',
-      '$data.list.visibleRowsHeight',
-    ],
-    calculateStyle,
-    { bulk: true }
-  );
-
-  const ListColumnHeader = createComponent(ListColumnHeaderComponent, { columnId: props.columnId });
-  onDestroy(ListColumnHeader.destroy);
-
-  onChange((changedProps) => {
-    props = changedProps;
-    for (const prop in props) {
-      actionProps[prop] = props[prop];
-    }
-    if (columnSub) columnSub();
-    ListColumnHeader.change({ columnId: props.columnId });
-    columnPath = `config.list.columns.data.${props.columnId}`;
-    columnSub = state.subscribe(columnPath, function columnChanged(val) {
-      column = val;
-      update();
-    });
-
-    if (styleSub) styleSub();
-    styleSub = state.subscribeAll(
+  onDestroy(
+    state.subscribeAll(
       [
         'config.list.columns.percent',
         'config.list.columns.resizer.width',
-        `config.list.columns.data.${column.id}.width`,
         '$data.chart.dimensions.width',
         '$data.innerHeight',
         '$data.list.width',
@@ -124,14 +86,20 @@ export default function ListColumn(vido: Vido, props: Props) {
       ],
       calculateStyle,
       { bulk: true }
-    );
+    )
+  );
 
+  const ListColumnHeader = createComponent(ListColumnHeaderComponent, props);
+  onDestroy(ListColumnHeader.destroy);
+
+  onChange((changedProps) => {
+    props = changedProps;
+    for (const prop in props) {
+      actionProps[prop] = props[prop];
+    }
+    calculateStyle();
     ListColumnHeader.change(props);
-  });
-
-  onDestroy(() => {
-    columnSub();
-    styleSub();
+    visibleRowsChange();
   });
 
   onDestroy(
@@ -148,7 +116,7 @@ export default function ListColumn(vido: Vido, props: Props) {
     reuseComponents(
       visibleRows,
       val,
-      (row) => row && { columnId: props.columnId, rowId: row.id, width },
+      (row) => row && { column: props.column, row, width },
       ListColumnRowComponent,
       false
     );
@@ -171,12 +139,8 @@ export default function ListColumn(vido: Vido, props: Props) {
     componentsSub.forEach((unsub) => unsub());
   });
 
-  function getRowHtml(row) {
-    return row.html();
-  }
-
   componentActions.push(BindElementAction);
-  const headerActions = Actions.create(componentActions, { column, state: state, api: api });
+  const headerActions = Actions.create(componentActions, { column: props.column, state: state, api: api });
   const rowActions = Actions.create(rowsActions, { api, state });
 
   return (templateProps) =>
@@ -185,7 +149,7 @@ export default function ListColumn(vido: Vido, props: Props) {
         <div class=${className} data-actions=${headerActions} style=${widthStyleMap}>
           ${ListColumnHeader.html()}
           <div class=${classNameContainer} style=${containerStyleMap} data-actions=${rowActions}>
-            ${visibleRows.map(getRowHtml)}
+            ${visibleRows.map((row) => row.html())}
           </div>
         </div>
       `,

@@ -78,17 +78,17 @@ export function stateFromConfig(userConfig: Config) {
   return (this.state = new State(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 }));
 }
 
-export async function stateFromConfigExperimental(userConfig: Config) {
+export async function wasmStateFromConfig(userConfig: Config, wasmFile: string = './wildcard_matcher_bg.wasm') {
   // @ts-ignore
   this.state = new State(prepareState(userConfig), { delimeter: '.', maxSimultaneousJobs: 1000 });
-  await this.state.initExperimentalMatcher('./wildcard_matcher_bg.wasm');
+  await this.state.loadWasmMatcher(wasmFile);
   return this.state;
 }
 
 export const publicApi = {
   name: lib,
   stateFromConfig,
-  stateFromConfigExperimental,
+  wasmStateFromConfig,
   merge: mergeDeep,
   date(time) {
     return time ? dayjs(time) : dayjs();

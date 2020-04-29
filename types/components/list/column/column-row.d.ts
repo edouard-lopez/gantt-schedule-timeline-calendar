@@ -1,7 +1,7 @@
-import { Vido } from '../../../gstc';
+import { ColumnData, Row, Vido } from '../../../gstc';
 export interface Props {
-    rowId: string;
-    columnId: string;
+    row: Row;
+    column: ColumnData;
 }
 export default function ListColumnRow(vido: Vido, props: Props): (templateProps: any) => any;
 //# sourceMappingURL=column-row.d.ts.map

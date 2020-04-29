@@ -1,6 +1,6 @@
-import { Vido } from '../../../gstc';
+import { Vido, ColumnData } from '../../../gstc';
 export interface Props {
-    columnId: string;
+    column: ColumnData;
 }
 export default function ListColumnHeaderResizer(vido: Vido, props: Props): (templateProps: any) => any;
 //# sourceMappingURL=column-header-resizer.d.ts.map

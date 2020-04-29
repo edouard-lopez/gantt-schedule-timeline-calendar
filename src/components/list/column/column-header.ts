@@ -8,10 +8,10 @@
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
 
-import { Vido } from '../../../gstc';
+import { Vido, ColumnData } from '../../../gstc';
 
 export interface Props {
-  columnId: string;
+  column: ColumnData;
 }
 
 export default function ListColumnHeader(vido: Vido, props: Props) {
@@ -30,37 +30,26 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
   componentsSubs.push(
     state.subscribe('config.components.ListColumnHeaderResizer', (value) => (ListColumnHeaderResizerComponent = value))
   );
-  const ListColumnHeaderResizer = createComponent(ListColumnHeaderResizerComponent, { columnId: props.columnId });
+  const ListColumnHeaderResizer = createComponent(ListColumnHeaderResizerComponent, props);
 
   let ListColumnRowExpanderComponent;
   componentsSubs.push(
     state.subscribe('config.components.ListColumnRowExpander', (value) => (ListColumnRowExpanderComponent = value))
   );
-  const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, {});
+  const ListColumnRowExpander = createComponent(ListColumnRowExpanderComponent, props);
   onDestroy(() => {
     ListColumnHeaderResizer.destroy();
     ListColumnRowExpander.destroy();
     componentsSubs.forEach((unsub) => unsub());
   });
 
-  let column;
-  let columnSub = state.subscribe(`config.list.columns.data.${props.columnId}`, (val) => {
-    column = val;
-    update();
-  });
-
-  onDestroy(columnSub);
-
   onChange((changedProps) => {
     props = changedProps;
     for (const prop in props) {
       actionProps[prop] = props[prop];
     }
-    if (columnSub) columnSub();
-    columnSub = state.subscribe(`config.list.columns.data.${props.columnId}`, (val) => {
-      column = val;
-      update();
-    });
+    ListColumnHeaderResizer.change(props);
+    ListColumnRowExpander.change(props);
   });
 
   let className, contentClass;
@@ -89,7 +78,7 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
   function withExpander() {
     return html`
       <div class=${contentClass}>
-        ${ListColumnRowExpander.html()}${ListColumnHeaderResizer.html(column)}
+        ${ListColumnRowExpander.html()}${ListColumnHeaderResizer.html(props.column)}
       </div>
     `;
   }
@@ -97,7 +86,7 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
   function withoutExpander() {
     return html`
       <div class=${contentClass}>
-        ${ListColumnHeaderResizer.html(column)}
+        ${ListColumnHeaderResizer.html(props.column)}
       </div>
     `;
   }
@@ -108,7 +97,7 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
     wrapper(
       html`
         <div class=${className} style=${styleMap} data-actions=${actions}>
-          ${cache(column.expander ? withExpander() : withoutExpander())}
+          ${cache(props.column.expander ? withExpander() : withoutExpander())}
         </div>
       `,
       { vido, props, templateProps }

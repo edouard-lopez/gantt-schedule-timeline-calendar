@@ -53,9 +53,6 @@ export default function ChartTimelineGrid(vido: Vido, props) {
   const formatCache = new Map();
   const styleMap = new StyleMap({});
 
-  /**
-   * Generate cells
-   */
   function generateCells() {
     const width = state.get('$data.chart.dimensions.width');
     const height = state.get('$data.innerHeight');
@@ -95,6 +92,7 @@ export default function ChartTimelineGrid(vido: Vido, props) {
   onDestroy(
     state.subscribeAll(
       [
+        '$data.list.rowsHeight',
         '$data.list.visibleRows;',
         '$data.list.visibleRowsHeight',
         '$data.chart.items.*.rowId',
@@ -110,10 +108,6 @@ export default function ChartTimelineGrid(vido: Vido, props) {
     )
   );
 
-  /**
-   * Generate rows components
-   * @param {array} rowsWithCells
-   */
   function generateRowsComponents(rowsWithCells: RowWithCells[]) {
     reuseComponents(rowsComponents, rowsWithCells || [], (row) => row, GridRowComponent, false);
     update();

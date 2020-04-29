@@ -8,14 +8,15 @@
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
 
-import { Vido } from '../../../gstc';
+import { Vido, ColumnData } from '../../../gstc';
+import { unsafeHTML } from '@neuronet.io/vido/vido';
 
 export interface Props {
-  columnId: string;
+  column: ColumnData;
 }
 
 export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
-  const { api, state, onDestroy, update, html, Actions, PointerAction, cache, StyleMap } = vido;
+  const { api, state, onDestroy, update, html, Actions, onChange, PointerAction, cache, StyleMap } = vido;
 
   const componentName = 'list-column-header-resizer';
   const componentActions = api.getActions(componentName);
@@ -23,14 +24,6 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
 
   let wrapper;
   onDestroy(state.subscribe('config.wrappers.ListColumnHeaderResizer', (value) => (wrapper = value)));
-
-  let column;
-  onDestroy(
-    state.subscribe(`config.list.columns.data.${props.columnId}`, (val) => {
-      column = val;
-      update();
-    })
-  );
 
   let className, containerClass, dotsClass, dotClass, calculatedWidth;
   const dotsStyleMap = new StyleMap({ width: '' });
@@ -44,22 +37,25 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
       update();
     })
   );
+
+  function updateData() {
+    if (!props.column) return;
+    const list = state.get('config.list');
+    calculatedWidth = props.column.width * list.columns.percent * 0.01;
+    dotsStyleMap.style['--width'] = list.columns.resizer.width + 'px';
+    inRealTime = list.columns.resizer.inRealTime;
+    state.update('$data.list.width', calculatedWidth);
+    update();
+  }
+
+  onChange((changedProps) => {
+    props = changedProps;
+    updateData();
+  });
   onDestroy(
     state.subscribeAll(
-      [
-        `config.list.columns.data.${column.id}.width`,
-        'config.list.columns.percent',
-        'config.list.columns.resizer.width',
-        'config.list.columns.resizer.inRealTime',
-      ],
-      (value, path) => {
-        const list = state.get('config.list');
-        calculatedWidth = column.width * list.columns.percent * 0.01;
-        dotsStyleMap.style['--width'] = list.columns.resizer.width + 'px';
-        inRealTime = list.columns.resizer.inRealTime;
-        state.update('$data.list.width', calculatedWidth);
-        update();
-      }
+      ['config.list.columns.percent', 'config.list.columns.resizer.width', 'config.list.columns.resizer.inRealTime'],
+      updateData
     )
   );
 
@@ -81,25 +77,24 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
     '--left': left + 'px'
   });*/
   let left = calculatedWidth;
-  const columnWidthPath = `config.list.columns.data.${column.id}.width`;
 
   const actionProps = {
-    column,
+    column: props.column,
     api,
     state,
     pointerOptions: {
       axis: 'x',
       onMove: function onMove({ movementX }) {
         let minWidth = state.get('config.list.columns.minWidth');
-        if (typeof column.minWidth === 'number') {
-          minWidth = column.minWidth;
+        if (typeof props.column.minWidth === 'number') {
+          minWidth = props.column.minWidth;
         }
         left += movementX;
         if (left < minWidth) {
           left = minWidth;
         }
         if (inRealTime) {
-          state.update(columnWidthPath, left);
+          state.update(`config.list.columns.data.${props.column.id}.width`, left);
         }
       },
     },
@@ -114,7 +109,7 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
       html`
         <div class=${className} data-actions=${actions}>
           <div class=${containerClass}>
-            ${cache(column.header.html ? html` ${column.header.html} ` : column.header.content)}
+            ${cache(props.column.header.html ? unsafeHTML(props.column.header.html) : props.column.header.content)}
           </div>
           <div class=${dotsClass} style=${dotsStyleMap} data-actions=${dotsActions}>
             ${dots.map((dot) => html` <div class=${dotClass} /> `)}
