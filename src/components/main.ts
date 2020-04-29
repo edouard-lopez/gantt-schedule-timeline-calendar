@@ -185,7 +185,7 @@ export default function Main(vido: Vido, props = {}) {
     state
       .multi()
       .update('$data.list.rowsHeight', rowsHeight, { force: true })
-      .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded, { force: true })
+      .update('$data.list.rowsWithParentsExpanded', rowsWithParentsExpanded)
       .done();
     update();
   }
@@ -195,7 +195,6 @@ export default function Main(vido: Vido, props = {}) {
         'config.list.rows.*.expanded',
         'config.chart.items.*.height',
         'config.chart.items.*.rowId',
-        'config.list.rows.*.height',
         'config.list.rows.*.$data.outerHeight',
         'config.scroll.vertical.area',
       ],
