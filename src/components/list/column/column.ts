@@ -57,12 +57,14 @@ export default function ListColumn(vido: Vido, props: Props) {
 
   const componentName = 'list-column';
   const rowsComponentName = componentName + '-rows';
+  const rowsOffsetName = componentName + '-rows-offset';
   const componentActions = api.getActions(componentName);
   const rowsActions = api.getActions(rowsComponentName);
-  let className, classNameContainer, calculatedWidth;
+  let className, classNameContainer, classNameOffset, calculatedWidth;
 
   const widthStyleMap = new StyleMap({ width: '', ['--width' as any]: '' });
   const containerStyleMap = new StyleMap({ width: '', height: '' });
+  const offsetStyleMap = new StyleMap({ 'margin-top': '0px' });
 
   let width;
   function calculateStyle() {
@@ -105,6 +107,7 @@ export default function ListColumn(vido: Vido, props: Props) {
   onDestroy(
     state.subscribe('config.classNames', (value) => {
       className = api.getClass(componentName);
+      classNameOffset = api.getClass(rowsOffsetName);
       classNameContainer = api.getClass(rowsComponentName);
       update();
     })
@@ -134,6 +137,13 @@ export default function ListColumn(vido: Vido, props: Props) {
     )
   );
 
+  onDestroy(
+    state.subscribe('config.scroll.vertical.offset', (offset) => {
+      offsetStyleMap.style['transform'] = `translateY(-${offset || 0}px)`;
+      update();
+    })
+  );
+
   onDestroy(() => {
     visibleRows.forEach((row) => row.destroy());
     componentsSub.forEach((unsub) => unsub());
@@ -149,7 +159,9 @@ export default function ListColumn(vido: Vido, props: Props) {
         <div class=${className} data-actions=${headerActions} style=${widthStyleMap}>
           ${ListColumnHeader.html()}
           <div class=${classNameContainer} style=${containerStyleMap} data-actions=${rowActions}>
-            ${visibleRows.map((row) => row.html())}
+            <div class=${classNameOffset} style=${offsetStyleMap}>
+              ${visibleRows.map((row) => row.html())}
+            </div>
           </div>
         </div>
       `,

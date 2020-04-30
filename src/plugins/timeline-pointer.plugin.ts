@@ -41,6 +41,11 @@ export interface Options {
   captureEvents?: CaptureEvents;
 }
 
+export interface Offset {
+  top: number;
+  left: number;
+}
+
 export interface PluginData extends Options {
   isMoving: boolean;
   pointerState: PointerState;
@@ -49,11 +54,12 @@ export interface PluginData extends Options {
   targetType: ITEM_TYPE | CELL_TYPE | '';
   targetData: any | null;
   events: PointerEvents;
+  offset: Offset;
   initialPosition: Point;
   currentPosition: Point;
 }
 
-function generateEmptyData(options: Options): PluginData {
+function generateEmptyData(options: Options = {}): PluginData {
   const result: PluginData = {
     enabled: true,
     isMoving: false,
@@ -62,6 +68,7 @@ function generateEmptyData(options: Options): PluginData {
     realTarget: null,
     targetType: '',
     targetData: null,
+    offset: { top: 0, left: 0 },
     captureEvents: {
       down: false,
       up: false,
@@ -114,6 +121,12 @@ class TimelinePointer {
     document.addEventListener('pointerup', this.pointerUp /*, this.data.captureEvents.up*/);
     document.addEventListener('pointermove', this.pointerMove /*, this.data.captureEvents.move*/);
     this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
+    this.unsub.push(
+      this.state.subscribe('config.scroll.vertical.offset', (offset) => {
+        this.data.offset.left = offset;
+        this.updateData();
+      })
+    );
   }
 
   public destroy() {
@@ -144,6 +157,8 @@ class TimelinePointer {
       const bounding = this.element.getBoundingClientRect();
       pos.x = ev.x - bounding.x;
       pos.y = ev.y - bounding.y;
+      const scrollOffsetTop = this.state.get('config.scroll.vertical.offset') || 0;
+      pos.y += scrollOffsetTop;
     }
     return pos;
   }

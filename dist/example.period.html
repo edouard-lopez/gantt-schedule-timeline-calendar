@@ -45,7 +45,7 @@
     <script src="./highlight-weekends.plugin.umd.js"></script>
     <script src="./gstc.umd.js"></script>
     <script>
-      const iterations = 10000;
+      const iterations = 100;
 
       const pallete = [
         '#E74C3C',
@@ -168,6 +168,11 @@
         list: {
           rows,
           columns,
+        },
+        scroll: {
+          vertical: {
+            smooth: true,
+          },
         },
         chart: {
           items,

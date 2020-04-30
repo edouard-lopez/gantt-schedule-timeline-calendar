@@ -9,7 +9,7 @@
  */
 const CELL = 'chart-timeline-grid-row-cell';
 const ITEM = 'chart-timeline-items-row-item';
-function generateEmptyData(options) {
+function generateEmptyData(options = {}) {
     const result = {
         enabled: true,
         isMoving: false,
@@ -18,6 +18,7 @@ function generateEmptyData(options) {
         realTarget: null,
         targetType: '',
         targetData: null,
+        offset: { top: 0, left: 0 },
         captureEvents: {
             down: false,
             up: false,
@@ -59,6 +60,10 @@ class TimelinePointer {
         document.addEventListener('pointerup', this.pointerUp /*, this.data.captureEvents.up*/);
         document.addEventListener('pointermove', this.pointerMove /*, this.data.captureEvents.move*/);
         this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
+        this.unsub.push(this.state.subscribe('config.scroll.vertical.offset', (offset) => {
+            this.data.offset.left = offset;
+            this.updateData();
+        }));
     }
     destroy() {
         this.element.removeEventListener('pointerdown', this.pointerDown);
@@ -85,6 +90,8 @@ class TimelinePointer {
             const bounding = this.element.getBoundingClientRect();
             pos.x = ev.x - bounding.x;
             pos.y = ev.y - bounding.y;
+            const scrollOffsetTop = this.state.get('config.scroll.vertical.offset') || 0;
+            pos.y += scrollOffsetTop;
         }
         return pos;
     }
@@ -527,7 +534,7 @@ class ItemMovement {
         let multi = this.state.multi();
         for (const item of modified) {
             multi = multi.update(`config.chart.items.${item.id}`, (currentItem) => {
-                // items should be always references - we cannot make a copy of the object because it may lead to troubles
+                // items should be always references - we cannot make a copy of the object because it may lead us to troubles
                 mergeDeep(currentItem, item);
                 return currentItem;
             });

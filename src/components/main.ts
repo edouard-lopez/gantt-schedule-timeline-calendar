@@ -205,23 +205,23 @@ export default function Main(vido: Vido, props = {}) {
 
   function getLastPageRowsHeight(innerHeight: number, rowsWithParentsExpanded: Row[]): number {
     if (rowsWithParentsExpanded.length === 0) return 0;
-    let currentHeight = 0;
-    let count = 0;
+    let lastPageSize = 0;
+    let lastPageCount = 0;
     for (let i = rowsWithParentsExpanded.length - 1; i >= 0; i--) {
       const row = rowsWithParentsExpanded[i];
-      currentHeight += row.$data.outerHeight;
-      if (currentHeight >= innerHeight) {
-        currentHeight = currentHeight - row.$data.outerHeight;
+      lastPageSize += row.$data.outerHeight;
+      if (lastPageSize >= innerHeight) {
+        lastPageSize = lastPageSize - row.$data.outerHeight;
         break;
       }
-      count++;
+      lastPageCount++;
     }
     state
       .multi()
-      .update('config.scroll.vertical.lastPageSize', currentHeight, { force: true })
-      .update('config.scroll.vertical.lastPageCount', count, { force: true })
+      .update('config.scroll.vertical.lastPageSize', lastPageSize, { force: true })
+      .update('config.scroll.vertical.lastPageCount', lastPageCount, { force: true })
       .done();
-    return currentHeight;
+    return lastPageSize;
   }
 
   function calculateHeightRelatedThings() {
@@ -231,21 +231,31 @@ export default function Main(vido: Vido, props = {}) {
     lastRowsHeight = rowsHeight;
     const innerHeight = state.get('$data.innerHeight');
     const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
-    state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight, { force: true });
+    state
+      .multi()
+      .update('config.scroll.vertical.area', rowsHeight, { force: true })
+      .update('config.scroll.vertical.areaWithoutLastPage', rowsHeight - lastPageHeight, { force: true })
+      .done();
   }
   onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
 
   function calculateVisibleRowsHeights() {
+    const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
     const visibleRows: Row[] = state.get('$data.list.visibleRows');
     let height = 0;
     for (const row of visibleRows) {
       height += api.recalculateRowHeight(row);
     }
-    state.update('$data.list.visibleRowsHeight', height);
+    state.update('$data.list.visibleRowsHeight', height + scrollOffset);
   }
   onDestroy(
     state.subscribeAll(
-      ['config.chart.items.*.time', 'config.chart.items.*.$data.position', '$data.list.visibleRows'],
+      [
+        'config.chart.items.*.time',
+        'config.chart.items.*.$data.position',
+        '$data.list.visibleRows',
+        'config.scroll.vertical.offset',
+      ],
       calculateVisibleRowsHeights,
       {
         bulk: true,

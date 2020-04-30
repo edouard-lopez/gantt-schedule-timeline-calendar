@@ -20,6 +20,7 @@ export type Vido = vido<DeepState, Api>;
 export interface RowDataPosition {
   top: number;
   topPercent: number;
+  bottomPercent: number;
   viewTop: number;
 }
 
@@ -254,6 +255,8 @@ export interface ScrollType {
   posPx?: number;
   maxPosPx?: number;
   area?: number;
+  areaWithoutLastPage?: number;
+  smooth?: boolean;
   lastPageSize?: number;
   lastPageCount?: number;
   dataIndex?: number;
@@ -261,6 +264,7 @@ export interface ScrollType {
   scrollArea?: number;
   innerSize?: number;
   multiplier?: number;
+  offset?: number;
 }
 
 export interface ScrollTypeHorizontal extends ScrollType {

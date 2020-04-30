@@ -11,7 +11,7 @@
 import { Vido } from '../../gstc';
 
 export default function ListToggle(vido: Vido, props = {}) {
-  const { html, onDestroy, api, state, update } = vido;
+  const { html, onDestroy, api, state, update, StyleMap } = vido;
   const componentName = 'list-toggle';
   let className;
   onDestroy(
@@ -32,6 +32,13 @@ export default function ListToggle(vido: Vido, props = {}) {
         toggleIconsSrc = value;
         update();
       }
+    })
+  );
+
+  const styleMap = new StyleMap({ top: '0px' });
+  onDestroy(
+    state.subscribe('config.scroll.vertical.offset', (offset) => {
+      styleMap.style.top = (offset || 0) + 'px';
     })
   );
 
@@ -60,7 +67,7 @@ export default function ListToggle(vido: Vido, props = {}) {
   return (templateProps) =>
     wrapper(
       html`
-        <div class=${className} @pointerdown=${pointerDown} @pointerup=${pointerUp}>
+        <div class=${className} style=${styleMap} @pointerdown=${pointerDown} @pointerup=${pointerUp}>
           <img src=${open ? toggleIconsSrc.close : toggleIconsSrc.open} />
         </div>
       `,

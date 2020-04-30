@@ -242,6 +242,7 @@ export class Api {
         position: {
           top: 0,
           topPercent: 0,
+          bottomPercent: 0,
           viewTop: 0,
         },
         items: [],
@@ -336,8 +337,10 @@ export class Api {
     for (const row of rows) {
       if (verticalAreaHeight <= 0) {
         row.$data.position.topPercent = 0;
+        row.$data.position.bottomPercent = 0;
       } else {
         row.$data.position.topPercent = top ? top / verticalAreaHeight : 0;
+        row.$data.position.bottomPercent = (top + row.$data.outerHeight) / verticalAreaHeight;
       }
       top += row.$data.outerHeight;
     }
@@ -404,9 +407,12 @@ export class Api {
   getVisibleRows(rowsWithParentsExpanded: Row[]): Row[] {
     if (rowsWithParentsExpanded.length === 0) return [];
     const visibleRows = [];
-    let topRow = this.state.get('config.scroll.vertical.data');
+    const verticalScroll = this.state.get('config.scroll.vertical');
+    let topRow = verticalScroll.data;
     if (!topRow) topRow = rowsWithParentsExpanded[0];
-    const innerHeight = this.state.get('$data.innerHeight');
+    let innerHeight = this.state.get('$data.innerHeight');
+    if (!innerHeight) return [];
+    innerHeight += verticalScroll.offset || 0;
     let strictTopRow = rowsWithParentsExpanded.find((row) => row.id === topRow.id);
     let index = rowsWithParentsExpanded.indexOf(strictTopRow);
     if (index === undefined) return [];
@@ -510,7 +516,7 @@ export class Api {
     return this.state.get('config.scroll.horizontal');
   }
 
-  setScrollTop(dataIndex: number | undefined) {
+  setScrollTop(dataIndex: number | undefined, offset: number = 0) {
     if (dataIndex === undefined) {
       dataIndex = 0;
     }
@@ -518,12 +524,18 @@ export class Api {
     if (!rows[dataIndex] && dataIndex !== 0) dataIndex = 0;
     if (!rows[dataIndex]) return;
     this.state.update('config.scroll.vertical', (scrollVertical: ScrollTypeVertical) => {
+      const lastItemIndex = rows.length - scrollVertical.lastPageCount;
       if (dataIndex + scrollVertical.lastPageCount > rows.length) {
-        dataIndex = rows.length - scrollVertical.lastPageCount;
+        dataIndex = lastItemIndex;
+      }
+      if (dataIndex === lastItemIndex) {
+        offset = 0;
       }
       scrollVertical.data = rows[dataIndex];
+      scrollVertical.offset = offset;
       scrollVertical.posPx =
-        rows[dataIndex].$data.position.topPercent * (scrollVertical.maxPosPx - scrollVertical.innerSize);
+        rows[dataIndex].$data.position.topPercent * scrollVertical.maxPosPx +
+        Math.floor(scrollVertical.scrollArea * (offset / scrollVertical.area));
       scrollVertical.dataIndex = dataIndex;
       return scrollVertical;
     });

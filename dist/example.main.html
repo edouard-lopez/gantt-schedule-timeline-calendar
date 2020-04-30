@@ -47,7 +47,7 @@
     <script src="./highlight-weekends.plugin.umd.js"></script>
     <script src="./gstc.umd.js"></script>
     <script>
-      const iterations = 1000;
+      const iterations = 100;
 
       const pallete = [
         '#E74C3C',
@@ -172,9 +172,7 @@
       const config = {
         plugins: [
           HighlightWeekends.Plugin(),
-          TimelinePointer.Plugin({
-            capture: {},
-          }),
+          TimelinePointer.Plugin(),
           Selection.Plugin(),
           ItemMovement.Plugin(),
           /*{
@@ -203,14 +201,11 @@
           CalendarScroll.Plugin(),
         ],
         height: 523,
-        /*scroll: {
-          horizontal: {
-            multiplier: 1,
-          },
+        scroll: {
           vertical: {
-            multiplier: 1,
+            smooth: true,
           },
-        },*/
+        },
         list: {
           rows,
           columns,

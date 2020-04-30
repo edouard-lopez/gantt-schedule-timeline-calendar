@@ -9,7 +9,7 @@
  */
 
 import Action from '@neuronet.io/vido/Action';
-import { ScrollType, Row, Vido, DataChartTimeLevelDate } from '../gstc';
+import { ScrollType, Row, Vido, DataChartTimeLevelDate, DataChartTime } from '../gstc';
 
 export interface Props {
   type: 'horizontal' | 'vertical';
@@ -33,16 +33,17 @@ export default function ScrollBar(vido: Vido, props: Props) {
 
   let size;
   const sizeProp = props.type === 'horizontal' ? 'height' : 'width';
-  const invSizeProp = sizeProp === 'height' ? 'width' : 'height';
+  const barSizeProp = sizeProp === 'height' ? 'width' : 'height';
   const offsetProp = props.type === 'horizontal' ? 'left' : 'top';
   const styleMapOuter = new StyleMap({});
   const styleMapInner = new StyleMap({});
   let maxPos = 0;
+  let smooth = false;
   let allDates: DataChartTimeLevelDate[] = [];
   let rows: Row[] = [];
-  let innerSize = 0,
-    invSize = 0,
-    invSizeInner = 0,
+  let barSize = 0,
+    chartSize = 0,
+    chartSizeInner = 0,
     sub = 0;
 
   function getFullSize(): number {
@@ -98,7 +99,7 @@ export default function ScrollBar(vido: Vido, props: Props) {
       cache.maxPosPx = maxPos;
       cache.innerSize = innerSize;
       cache.sub = sub;
-      cache.scrollArea = invSize;
+      cache.scrollArea = scrollArea;
     }
     return result;
   }
@@ -114,26 +115,27 @@ export default function ScrollBar(vido: Vido, props: Props) {
             '$data.list.rowsHeight',
           ],
       function scrollThing() {
-        const time = state.get('$data.chart.time');
-        const scroll = state.get(`config.scroll.${props.type}`);
-        const chartWidth = state.get('$data.chart.dimensions.width');
-        const chartHeight = state.get('$data.innerHeight');
+        const time: DataChartTime = state.get('$data.chart.time');
+        const scroll: ScrollType = state.get(`config.scroll.${props.type}`);
+        const chartWidth: number = state.get('$data.chart.dimensions.width');
+        const chartHeight: number = state.get('$data.innerHeight');
+        smooth = scroll.smooth;
         size = scroll.size;
-        invSize = props.type === 'horizontal' ? chartWidth : chartHeight;
-        invSize = invSize || 0;
+        chartSize = props.type === 'horizontal' ? chartWidth : chartHeight;
+        chartSize = chartSize || 0;
         if (props.type === 'horizontal') {
-          invSize -= size;
+          chartSize -= size;
         } else {
-          invSize += size;
+          chartSize += size;
         }
-        if (invSize < 0) invSize = 0;
+        if (chartSize < 0) chartSize = 0;
         styleMapOuter.style[sizeProp] = size + 'px';
-        styleMapOuter.style[invSizeProp] = invSize + 'px';
+        styleMapOuter.style[barSizeProp] = chartSize + 'px';
         if (props.type === 'vertical') {
           styleMapOuter.style.top = state.get('config.headerHeight') + 'px';
         }
         styleMapInner.style[sizeProp] = '100%';
-        invSizeInner = invSize;
+        chartSizeInner = chartSize;
         if (props.type === 'horizontal') {
           if (time.allDates && time.allDates[time.level]) {
             allDates = time.allDates[time.level];
@@ -145,32 +147,33 @@ export default function ScrollBar(vido: Vido, props: Props) {
         }
 
         const fullSize = getFullSize();
+        const lastPageSize = state.get(`config.scroll.${props.type}.lastPageSize`);
+        if (!lastPageSize) return;
         sub = 0;
-        if (fullSize <= invSizeInner || scroll.lastPageSize === fullSize) {
-          invSizeInner = 0;
-          innerSize = 0;
+        if (fullSize <= chartSizeInner || scroll.lastPageSize === fullSize) {
+          chartSizeInner = 0;
+          barSize = 0;
         } else {
-          if (invSize && fullSize) {
-            innerSize = invSize * (invSize / fullSize);
+          if (chartSize && fullSize) {
+            barSize = chartSize * (chartSize / fullSize);
           } else {
-            innerSize = 0;
-            invSizeInner = 0;
+            barSize = 0;
+            chartSizeInner = 0;
           }
-          if (innerSize < scroll.minInnerSize) {
-            sub = scroll.minInnerSize - innerSize;
-            innerSize = scroll.minInnerSize;
+          if (barSize < scroll.minInnerSize) {
+            sub = scroll.minInnerSize - barSize;
+            barSize = scroll.minInnerSize;
           }
         }
-
-        styleMapInner.style[invSizeProp] = innerSize + 'px';
-        maxPos = Math.round(invSize - sub);
-        if (shouldUpdate(maxPos, innerSize, sub, invSize)) {
-          // shouldUpdate prevent infinite loop
+        styleMapInner.style[barSizeProp] = barSize + 'px';
+        maxPos = Math.round(chartSize - sub);
+        if (shouldUpdate(maxPos, barSize, sub, chartSize)) {
+          // shouldUpdate prevent infinite loop because we are watching scroll too
           state.update(`config.scroll.${props.type}`, (scroll: ScrollType) => {
             scroll.maxPosPx = maxPos;
-            scroll.innerSize = innerSize;
+            scroll.innerSize = barSize;
             scroll.sub = sub;
-            scroll.scrollArea = invSize;
+            scroll.scrollArea = chartSize;
             return scroll;
           });
         }
@@ -184,8 +187,8 @@ export default function ScrollBar(vido: Vido, props: Props) {
     state.subscribe(`config.scroll.${props.type}.posPx`, (position) => {
       if (position !== oldPos) {
         styleMapInner.style[offsetProp] = position + 'px';
-        update();
         oldPos = position;
+        update();
       }
     })
   );
@@ -218,8 +221,8 @@ export default function ScrollBar(vido: Vido, props: Props) {
       this.pointerDown = this.pointerDown.bind(this);
       this.pointerUp = this.pointerUp.bind(this);
       const pointerMove = this.pointerMove.bind(this);
-      //this.pointerMove = schedule((ev) => pointerMove(ev));
-      this.pointerMove = pointerMove;
+      this.pointerMove = schedule((ev) => pointerMove(ev));
+      //this.pointerMove = pointerMove;
       this.unsub = state.subscribe(`config.scroll.${props.type}`, this.dataChanged.bind(this));
       this.destroy = this.destroy.bind(this);
       element.addEventListener('pointerdown', this.pointerDown);
@@ -235,21 +238,22 @@ export default function ScrollBar(vido: Vido, props: Props) {
     }
 
     dataChanged() {
-      const dataIndex: number = state.get(`config.scroll.${props.type}.dataIndex`);
+      const scroll: ScrollType = state.get(`config.scroll.${props.type}`);
+      const dataIndex: number = scroll.dataIndex;
       this.lastDataIndex = dataIndex;
       if (props.type === 'horizontal' && allDates && allDates.length) {
         const date: DataChartTimeLevelDate = allDates[dataIndex];
         if (!date) return;
         if (this.lastDate && this.lastDate.leftPercent === date.leftPercent) return;
-        const pos = this.limitPosition(date.leftPercent * (invSize - sub));
+        const pos = this.limitPosition(date.leftPercent * (chartSize - sub));
         this.currentPos = pos;
         update();
       } else if (props.type === 'vertical') {
         const row = rows[dataIndex];
         if (!row) return;
         if (this.lastRow && this.lastRow.$data.position.topPercent === row.$data.position.topPercent) return;
-        const pos = Math.round(row.$data.position.topPercent * (invSize - sub));
-        this.currentPos = pos;
+        const pos = Math.round(row.$data.position.topPercent * (chartSize - sub));
+        this.currentPos = pos + scroll.offset;
         update();
       }
     }
@@ -292,15 +296,21 @@ export default function ScrollBar(vido: Vido, props: Props) {
         this.initialPos = current;
         const percent = this.currentPos / maxPos;
         let dataIndex = 0;
+        let offset = 0;
         if (props.type === 'horizontal') {
           for (let len = allDates.length; dataIndex < len; dataIndex++) {
             const date = allDates[dataIndex];
             if (date.leftPercent >= percent) break;
           }
         } else {
+          let row;
           for (let len = rows.length; dataIndex < len; dataIndex++) {
-            const rowPercent = rows[dataIndex].$data.position.topPercent;
-            if (rowPercent >= percent) break;
+            row = rows[dataIndex];
+            if (row.$data.position.bottomPercent >= percent) break;
+          }
+          if (dataIndex !== row.length - 1 && smooth) {
+            const leftPercent = percent - row.$data.position.topPercent;
+            offset = Math.floor(leftPercent * getFullSize());
           }
         }
         if (!dataIndex) dataIndex = 0;
@@ -310,7 +320,7 @@ export default function ScrollBar(vido: Vido, props: Props) {
           api.setScrollLeft(dataIndex, undefined, undefined, undefined);
         } else {
           this.lastRow = rows[dataIndex];
-          api.setScrollTop(dataIndex);
+          api.setScrollTop(dataIndex, offset);
         }
         if (dataIndex !== this.lastDataIndex) {
           this.cumulation = 0;

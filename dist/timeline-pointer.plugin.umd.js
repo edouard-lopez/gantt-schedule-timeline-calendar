@@ -15,7 +15,7 @@
    */
   const CELL = 'chart-timeline-grid-row-cell';
   const ITEM = 'chart-timeline-items-row-item';
-  function generateEmptyData(options) {
+  function generateEmptyData(options = {}) {
       const result = {
           enabled: true,
           isMoving: false,
@@ -24,6 +24,7 @@
           realTarget: null,
           targetType: '',
           targetData: null,
+          offset: { top: 0, left: 0 },
           captureEvents: {
               down: false,
               up: false,
@@ -65,6 +66,10 @@
           document.addEventListener('pointerup', this.pointerUp /*, this.data.captureEvents.up*/);
           document.addEventListener('pointermove', this.pointerMove /*, this.data.captureEvents.move*/);
           this.unsub.push(this.state.subscribe(pluginPath, (value) => (this.data = value)));
+          this.unsub.push(this.state.subscribe('config.scroll.vertical.offset', (offset) => {
+              this.data.offset.left = offset;
+              this.updateData();
+          }));
       }
       destroy() {
           this.element.removeEventListener('pointerdown', this.pointerDown);
@@ -91,6 +96,8 @@
               const bounding = this.element.getBoundingClientRect();
               pos.x = ev.x - bounding.x;
               pos.y = ev.y - bounding.y;
+              const scrollOffsetTop = this.state.get('config.scroll.vertical.offset') || 0;
+              pos.y += scrollOffsetTop;
           }
           return pos;
       }

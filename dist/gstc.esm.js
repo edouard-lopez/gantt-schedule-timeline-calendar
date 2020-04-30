@@ -6004,23 +6004,23 @@ function Main(vido, props = {}) {
     function getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded) {
         if (rowsWithParentsExpanded.length === 0)
             return 0;
-        let currentHeight = 0;
-        let count = 0;
+        let lastPageSize = 0;
+        let lastPageCount = 0;
         for (let i = rowsWithParentsExpanded.length - 1; i >= 0; i--) {
             const row = rowsWithParentsExpanded[i];
-            currentHeight += row.$data.outerHeight;
-            if (currentHeight >= innerHeight) {
-                currentHeight = currentHeight - row.$data.outerHeight;
+            lastPageSize += row.$data.outerHeight;
+            if (lastPageSize >= innerHeight) {
+                lastPageSize = lastPageSize - row.$data.outerHeight;
                 break;
             }
-            count++;
+            lastPageCount++;
         }
         state
             .multi()
-            .update('config.scroll.vertical.lastPageSize', currentHeight, { force: true })
-            .update('config.scroll.vertical.lastPageCount', count, { force: true })
+            .update('config.scroll.vertical.lastPageSize', lastPageSize, { force: true })
+            .update('config.scroll.vertical.lastPageCount', lastPageCount, { force: true })
             .done();
-        return currentHeight;
+        return lastPageSize;
     }
     function calculateHeightRelatedThings() {
         const rowsWithParentsExpanded = state.get('$data.list.rowsWithParentsExpanded');
@@ -6030,18 +6030,28 @@ function Main(vido, props = {}) {
         lastRowsHeight = rowsHeight;
         const innerHeight = state.get('$data.innerHeight');
         const lastPageHeight = getLastPageRowsHeight(innerHeight, rowsWithParentsExpanded);
-        state.update('config.scroll.vertical.area', rowsHeight - lastPageHeight, { force: true });
+        state
+            .multi()
+            .update('config.scroll.vertical.area', rowsHeight, { force: true })
+            .update('config.scroll.vertical.areaWithoutLastPage', rowsHeight - lastPageHeight, { force: true })
+            .done();
     }
     onDestroy(state.subscribeAll(['$data.innerHeight', '$data.list.rowsHeight'], calculateHeightRelatedThings));
     function calculateVisibleRowsHeights() {
+        const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
         const visibleRows = state.get('$data.list.visibleRows');
         let height = 0;
         for (const row of visibleRows) {
             height += api.recalculateRowHeight(row);
         }
-        state.update('$data.list.visibleRowsHeight', height);
+        state.update('$data.list.visibleRowsHeight', height + scrollOffset);
     }
-    onDestroy(state.subscribeAll(['config.chart.items.*.time', 'config.chart.items.*.$data.position', '$data.list.visibleRows'], calculateVisibleRowsHeights, {
+    onDestroy(state.subscribeAll([
+        'config.chart.items.*.time',
+        'config.chart.items.*.$data.position',
+        '$data.list.visibleRows',
+        'config.scroll.vertical.offset',
+    ], calculateVisibleRowsHeights, {
         bulk: true,
     }));
     function generateVisibleRowsAndItems() {
@@ -6701,14 +6711,15 @@ function ScrollBar(vido, props) {
     }));
     let size;
     const sizeProp = props.type === 'horizontal' ? 'height' : 'width';
-    const invSizeProp = sizeProp === 'height' ? 'width' : 'height';
+    const barSizeProp = sizeProp === 'height' ? 'width' : 'height';
     const offsetProp = props.type === 'horizontal' ? 'left' : 'top';
     const styleMapOuter = new StyleMap({});
     const styleMapInner = new StyleMap({});
     let maxPos = 0;
+    let smooth = false;
     let allDates = [];
     let rows = [];
-    let innerSize = 0, invSize = 0, invSizeInner = 0, sub = 0;
+    let barSize = 0, chartSize = 0, chartSizeInner = 0, sub = 0;
     function getFullSize() {
         let fullSize = 0;
         if (props.type === 'vertical') {
@@ -6758,7 +6769,7 @@ function ScrollBar(vido, props) {
             cache.maxPosPx = maxPos;
             cache.innerSize = innerSize;
             cache.sub = sub;
-            cache.scrollArea = invSize;
+            cache.scrollArea = scrollArea;
         }
         return result;
     }
@@ -6774,24 +6785,25 @@ function ScrollBar(vido, props) {
         const scroll = state.get(`config.scroll.${props.type}`);
         const chartWidth = state.get('$data.chart.dimensions.width');
         const chartHeight = state.get('$data.innerHeight');
+        smooth = scroll.smooth;
         size = scroll.size;
-        invSize = props.type === 'horizontal' ? chartWidth : chartHeight;
-        invSize = invSize || 0;
+        chartSize = props.type === 'horizontal' ? chartWidth : chartHeight;
+        chartSize = chartSize || 0;
         if (props.type === 'horizontal') {
-            invSize -= size;
+            chartSize -= size;
         }
         else {
-            invSize += size;
+            chartSize += size;
         }
-        if (invSize < 0)
-            invSize = 0;
+        if (chartSize < 0)
+            chartSize = 0;
         styleMapOuter.style[sizeProp] = size + 'px';
-        styleMapOuter.style[invSizeProp] = invSize + 'px';
+        styleMapOuter.style[barSizeProp] = chartSize + 'px';
         if (props.type === 'vertical') {
             styleMapOuter.style.top = state.get('config.headerHeight') + 'px';
         }
         styleMapInner.style[sizeProp] = '100%';
-        invSizeInner = invSize;
+        chartSizeInner = chartSize;
         if (props.type === 'horizontal') {
             if (time.allDates && time.allDates[time.level]) {
                 allDates = time.allDates[time.level];
@@ -6804,33 +6816,36 @@ function ScrollBar(vido, props) {
             rows = state.get('$data.list.rowsWithParentsExpanded') || [];
         }
         const fullSize = getFullSize();
+        const lastPageSize = state.get(`config.scroll.${props.type}.lastPageSize`);
+        if (!lastPageSize)
+            return;
         sub = 0;
-        if (fullSize <= invSizeInner || scroll.lastPageSize === fullSize) {
-            invSizeInner = 0;
-            innerSize = 0;
+        if (fullSize <= chartSizeInner || scroll.lastPageSize === fullSize) {
+            chartSizeInner = 0;
+            barSize = 0;
         }
         else {
-            if (invSize && fullSize) {
-                innerSize = invSize * (invSize / fullSize);
+            if (chartSize && fullSize) {
+                barSize = chartSize * (chartSize / fullSize);
             }
             else {
-                innerSize = 0;
-                invSizeInner = 0;
+                barSize = 0;
+                chartSizeInner = 0;
             }
-            if (innerSize < scroll.minInnerSize) {
-                sub = scroll.minInnerSize - innerSize;
-                innerSize = scroll.minInnerSize;
+            if (barSize < scroll.minInnerSize) {
+                sub = scroll.minInnerSize - barSize;
+                barSize = scroll.minInnerSize;
             }
         }
-        styleMapInner.style[invSizeProp] = innerSize + 'px';
-        maxPos = Math.round(invSize - sub);
-        if (shouldUpdate(maxPos, innerSize, sub, invSize)) {
-            // shouldUpdate prevent infinite loop
+        styleMapInner.style[barSizeProp] = barSize + 'px';
+        maxPos = Math.round(chartSize - sub);
+        if (shouldUpdate(maxPos, barSize, sub, chartSize)) {
+            // shouldUpdate prevent infinite loop because we are watching scroll too
             state.update(`config.scroll.${props.type}`, (scroll) => {
                 scroll.maxPosPx = maxPos;
-                scroll.innerSize = innerSize;
+                scroll.innerSize = barSize;
                 scroll.sub = sub;
-                scroll.scrollArea = invSize;
+                scroll.scrollArea = chartSize;
                 return scroll;
             });
         }
@@ -6840,8 +6855,8 @@ function ScrollBar(vido, props) {
     onDestroy(state.subscribe(`config.scroll.${props.type}.posPx`, (position) => {
         if (position !== oldPos) {
             styleMapInner.style[offsetProp] = position + 'px';
-            update();
             oldPos = position;
+            update();
         }
     }));
     class OuterAction extends Action {
@@ -6866,8 +6881,8 @@ function ScrollBar(vido, props) {
             this.pointerDown = this.pointerDown.bind(this);
             this.pointerUp = this.pointerUp.bind(this);
             const pointerMove = this.pointerMove.bind(this);
-            //this.pointerMove = schedule((ev) => pointerMove(ev));
-            this.pointerMove = pointerMove;
+            this.pointerMove = schedule((ev) => pointerMove(ev));
+            //this.pointerMove = pointerMove;
             this.unsub = state.subscribe(`config.scroll.${props.type}`, this.dataChanged.bind(this));
             this.destroy = this.destroy.bind(this);
             element.addEventListener('pointerdown', this.pointerDown);
@@ -6881,7 +6896,8 @@ function ScrollBar(vido, props) {
             document.removeEventListener('pointerup', this.pointerUp);
         }
         dataChanged() {
-            const dataIndex = state.get(`config.scroll.${props.type}.dataIndex`);
+            const scroll = state.get(`config.scroll.${props.type}`);
+            const dataIndex = scroll.dataIndex;
             this.lastDataIndex = dataIndex;
             if (props.type === 'horizontal' && allDates && allDates.length) {
                 const date = allDates[dataIndex];
@@ -6889,7 +6905,7 @@ function ScrollBar(vido, props) {
                     return;
                 if (this.lastDate && this.lastDate.leftPercent === date.leftPercent)
                     return;
-                const pos = this.limitPosition(date.leftPercent * (invSize - sub));
+                const pos = this.limitPosition(date.leftPercent * (chartSize - sub));
                 this.currentPos = pos;
                 update();
             }
@@ -6899,8 +6915,8 @@ function ScrollBar(vido, props) {
                     return;
                 if (this.lastRow && this.lastRow.$data.position.topPercent === row.$data.position.topPercent)
                     return;
-                const pos = Math.round(row.$data.position.topPercent * (invSize - sub));
-                this.currentPos = pos;
+                const pos = Math.round(row.$data.position.topPercent * (chartSize - sub));
+                this.currentPos = pos + scroll.offset;
                 update();
             }
         }
@@ -6939,6 +6955,7 @@ function ScrollBar(vido, props) {
                 this.initialPos = current;
                 const percent = this.currentPos / maxPos;
                 let dataIndex = 0;
+                let offset = 0;
                 if (props.type === 'horizontal') {
                     for (let len = allDates.length; dataIndex < len; dataIndex++) {
                         const date = allDates[dataIndex];
@@ -6947,10 +6964,15 @@ function ScrollBar(vido, props) {
                     }
                 }
                 else {
+                    let row;
                     for (let len = rows.length; dataIndex < len; dataIndex++) {
-                        const rowPercent = rows[dataIndex].$data.position.topPercent;
-                        if (rowPercent >= percent)
+                        row = rows[dataIndex];
+                        if (row.$data.position.bottomPercent >= percent)
                             break;
+                    }
+                    if (dataIndex !== row.length - 1 && smooth) {
+                        const leftPercent = percent - row.$data.position.topPercent;
+                        offset = Math.floor(leftPercent * getFullSize());
                     }
                 }
                 if (!dataIndex)
@@ -6962,7 +6984,7 @@ function ScrollBar(vido, props) {
                 }
                 else {
                     this.lastRow = rows[dataIndex];
-                    api.setScrollTop(dataIndex);
+                    api.setScrollTop(dataIndex, offset);
                 }
                 if (dataIndex !== this.lastDataIndex) {
                     this.cumulation = 0;
@@ -7143,11 +7165,13 @@ function ListColumn(vido, props) {
     const actionProps = Object.assign(Object.assign({}, props), { api, state });
     const componentName = 'list-column';
     const rowsComponentName = componentName + '-rows';
+    const rowsOffsetName = componentName + '-rows-offset';
     const componentActions = api.getActions(componentName);
     const rowsActions = api.getActions(rowsComponentName);
-    let className, classNameContainer, calculatedWidth;
+    let className, classNameContainer, classNameOffset, calculatedWidth;
     const widthStyleMap = new StyleMap({ width: '', ['--width']: '' });
     const containerStyleMap = new StyleMap({ width: '', height: '' });
+    const offsetStyleMap = new StyleMap({ 'margin-top': '0px' });
     let width;
     function calculateStyle() {
         const list = state.get('config.list');
@@ -7179,6 +7203,7 @@ function ListColumn(vido, props) {
     });
     onDestroy(state.subscribe('config.classNames', (value) => {
         className = api.getClass(componentName);
+        classNameOffset = api.getClass(rowsOffsetName);
         classNameContainer = api.getClass(rowsComponentName);
         update();
     }));
@@ -7194,6 +7219,10 @@ function ListColumn(vido, props) {
         'config.chart.items.*.rowId',
         'config.chart.items.*.time',
     ], visibleRowsChange));
+    onDestroy(state.subscribe('config.scroll.vertical.offset', (offset) => {
+        offsetStyleMap.style['transform'] = `translateY(-${offset || 0}px)`;
+        update();
+    }));
     onDestroy(() => {
         visibleRows.forEach((row) => row.destroy());
         componentsSub.forEach((unsub) => unsub());
@@ -7205,7 +7234,9 @@ function ListColumn(vido, props) {
         <div class=${className} data-actions=${headerActions} style=${widthStyleMap}>
           ${ListColumnHeader.html()}
           <div class=${classNameContainer} style=${containerStyleMap} data-actions=${rowActions}>
-            ${visibleRows.map((row) => row.html())}
+            <div class=${classNameOffset} style=${offsetStyleMap}>
+              ${visibleRows.map((row) => row.html())}
+            </div>
           </div>
         </div>
       `, { vido, props, templateProps });
@@ -7690,7 +7721,7 @@ function ListColumnRowExpanderToggle(vido, props) {
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
 function ListToggle(vido, props = {}) {
-    const { html, onDestroy, api, state, update } = vido;
+    const { html, onDestroy, api, state, update, StyleMap } = vido;
     const componentName = 'list-toggle';
     let className;
     onDestroy(state.subscribe('config.classNames', (classNames) => {
@@ -7707,6 +7738,10 @@ function ListToggle(vido, props = {}) {
             toggleIconsSrc = value;
             update();
         }
+    }));
+    const styleMap = new StyleMap({ top: '0px' });
+    onDestroy(state.subscribe('config.scroll.vertical.offset', (offset) => {
+        styleMap.style.top = (offset || 0) + 'px';
     }));
     let open = true;
     onDestroy(state.subscribe('config.list.columns.percent', (percent) => (percent === 0 ? (open = false) : (open = true))));
@@ -7726,7 +7761,7 @@ function ListToggle(vido, props = {}) {
         }
     }
     return (templateProps) => wrapper(html `
-        <div class=${className} @pointerdown=${pointerDown} @pointerup=${pointerUp}>
+        <div class=${className} style=${styleMap} @pointerdown=${pointerDown} @pointerup=${pointerUp}>
           <img src=${open ? toggleIconsSrc.close : toggleIconsSrc.open} />
         </div>
       `, { props, vido, templateProps });
@@ -8072,10 +8107,13 @@ function ChartTimeline(vido, props) {
         else {
             innerStyleMap.style.width = '0px';
         }
+        const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
+        innerStyleMap.style['transform'] = `translateY(-${scrollOffset}px)`;
         update();
     }
     onDestroy(state.subscribeAll([
         '$data.innerHeight',
+        'config.scroll.vertical.offset',
         '$data.chart.dimensions.width',
         '$data.list.visibleRowsHeight',
         '$data.chart.time.dates.day',
@@ -8149,6 +8187,7 @@ function ChartTimelineGrid(vido, props) {
     function generateCells() {
         const width = state.get('$data.chart.dimensions.width');
         const height = state.get('$data.innerHeight');
+        const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
         const time = state.get('$data.chart.time');
         const periodDates = state.get(`$data.chart.time.levels.${time.level}`);
         if (!periodDates || periodDates.length === 0) {
@@ -8156,7 +8195,7 @@ function ChartTimelineGrid(vido, props) {
             return;
         }
         const visibleRows = state.get('$data.list.visibleRows');
-        styleMap.style.height = height + 'px';
+        styleMap.style.height = height + scrollOffset + 'px';
         styleMap.style.width = width + 'px';
         let top = 0;
         rowsWithCells.length = 0;
@@ -8179,7 +8218,7 @@ function ChartTimelineGrid(vido, props) {
                 cells.push(cell);
             }
             rowsWithCells.push({ row, cells, top, width });
-            top += row.height;
+            top += row.$data.outerHeight;
         }
         state.update('$data.chart.grid.rowsWithCells', rowsWithCells);
     }
@@ -8446,10 +8485,12 @@ function ChartTimelineItems(vido, props = {}) {
     function calculateStyle() {
         const width = state.get('$data.chart.dimensions.width');
         const height = state.get('$data.innerHeight');
+        const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
         styleMap.style.width = width + 'px';
-        styleMap.style.height = height + 'px';
+        styleMap.style.height = height + scrollOffset + 'px';
+        //styleMap.style['margin-top'] = -scrollOffset + 'px';
     }
-    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.chart.dimensions.width'], calculateStyle));
+    onDestroy(state.subscribeAll(['$data.innerHeight', '$data.chart.dimensions.width', 'config.scroll.vertical.offset'], calculateStyle));
     const rowsComponents = [];
     function createRowComponents() {
         const visibleRows = state.get('$data.list.visibleRows') || [];
@@ -8964,6 +9005,8 @@ function defaultConfig() {
                 maxPosPx: 0,
                 area: 0,
                 multiplier: 3,
+                offset: 0,
+                smooth: false,
             },
             vertical: {
                 size: 20,
@@ -8973,6 +9016,8 @@ function defaultConfig() {
                 maxPosPx: 0,
                 area: 0,
                 multiplier: 3,
+                offset: 0,
+                smooth: false,
             },
         },
         chart: {
@@ -10985,6 +11030,7 @@ class Api {
                 position: {
                     top: 0,
                     topPercent: 0,
+                    bottomPercent: 0,
                     viewTop: 0,
                 },
                 items: [],
@@ -11085,9 +11131,11 @@ class Api {
         for (const row of rows) {
             if (verticalAreaHeight <= 0) {
                 row.$data.position.topPercent = 0;
+                row.$data.position.bottomPercent = 0;
             }
             else {
                 row.$data.position.topPercent = top ? top / verticalAreaHeight : 0;
+                row.$data.position.bottomPercent = (top + row.$data.outerHeight) / verticalAreaHeight;
             }
             top += row.$data.outerHeight;
         }
@@ -11152,10 +11200,14 @@ class Api {
         if (rowsWithParentsExpanded.length === 0)
             return [];
         const visibleRows = [];
-        let topRow = this.state.get('config.scroll.vertical.data');
+        const verticalScroll = this.state.get('config.scroll.vertical');
+        let topRow = verticalScroll.data;
         if (!topRow)
             topRow = rowsWithParentsExpanded[0];
-        const innerHeight = this.state.get('$data.innerHeight');
+        let innerHeight = this.state.get('$data.innerHeight');
+        if (!innerHeight)
+            return [];
+        innerHeight += verticalScroll.offset || 0;
         let strictTopRow = rowsWithParentsExpanded.find((row) => row.id === topRow.id);
         let index = rowsWithParentsExpanded.indexOf(strictTopRow);
         if (index === undefined)
@@ -11252,7 +11304,7 @@ class Api {
     getScrollLeft() {
         return this.state.get('config.scroll.horizontal');
     }
-    setScrollTop(dataIndex) {
+    setScrollTop(dataIndex, offset = 0) {
         if (dataIndex === undefined) {
             dataIndex = 0;
         }
@@ -11262,12 +11314,18 @@ class Api {
         if (!rows[dataIndex])
             return;
         this.state.update('config.scroll.vertical', (scrollVertical) => {
+            const lastItemIndex = rows.length - scrollVertical.lastPageCount;
             if (dataIndex + scrollVertical.lastPageCount > rows.length) {
-                dataIndex = rows.length - scrollVertical.lastPageCount;
+                dataIndex = lastItemIndex;
+            }
+            if (dataIndex === lastItemIndex) {
+                offset = 0;
             }
             scrollVertical.data = rows[dataIndex];
+            scrollVertical.offset = offset;
             scrollVertical.posPx =
-                rows[dataIndex].$data.position.topPercent * (scrollVertical.maxPosPx - scrollVertical.innerSize);
+                rows[dataIndex].$data.position.topPercent * scrollVertical.maxPosPx +
+                    Math.floor(scrollVertical.scrollArea * (offset / scrollVertical.area));
             scrollVertical.dataIndex = dataIndex;
             return scrollVertical;
         });

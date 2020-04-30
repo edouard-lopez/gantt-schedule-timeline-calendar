@@ -22,6 +22,10 @@ export interface Options {
     enabled?: boolean;
     captureEvents?: CaptureEvents;
 }
+export interface Offset {
+    top: number;
+    left: number;
+}
 export interface PluginData extends Options {
     isMoving: boolean;
     pointerState: PointerState;
@@ -30,6 +34,7 @@ export interface PluginData extends Options {
     targetType: ITEM_TYPE | CELL_TYPE | '';
     targetData: any | null;
     events: PointerEvents;
+    offset: Offset;
     initialPosition: Point;
     currentPosition: Point;
 }

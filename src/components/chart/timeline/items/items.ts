@@ -32,10 +32,17 @@ export default function ChartTimelineItems(vido: Vido, props = {}) {
   function calculateStyle() {
     const width = state.get('$data.chart.dimensions.width');
     const height = state.get('$data.innerHeight');
+    const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
     styleMap.style.width = width + 'px';
-    styleMap.style.height = height + 'px';
+    styleMap.style.height = height + scrollOffset + 'px';
+    //styleMap.style['margin-top'] = -scrollOffset + 'px';
   }
-  onDestroy(state.subscribeAll(['$data.innerHeight', '$data.chart.dimensions.width'], calculateStyle));
+  onDestroy(
+    state.subscribeAll(
+      ['$data.innerHeight', '$data.chart.dimensions.width', 'config.scroll.vertical.offset'],
+      calculateStyle
+    )
+  );
 
   const rowsComponents = [];
   function createRowComponents() {

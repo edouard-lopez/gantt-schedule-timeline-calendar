@@ -359,7 +359,7 @@ class ItemMovement {
     let multi = this.state.multi();
     for (const item of modified) {
       multi = multi.update(`config.chart.items.${item.id}`, (currentItem) => {
-        // items should be always references - we cannot make a copy of the object because it may lead to troubles
+        // items should be always references - we cannot make a copy of the object because it may lead us to troubles
         mergeDeep(currentItem, item);
         return currentItem;
       });

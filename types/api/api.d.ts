@@ -63,7 +63,7 @@ export declare class Api {
     scrollToTime(toTime: number, centered?: boolean, time?: DataChartTime): number;
     setScrollLeft(dataIndex: number | undefined, time?: DataChartTime, multi?: any, recalculateTimesLastReason?: string): any;
     getScrollLeft(): ScrollTypeHorizontal;
-    setScrollTop(dataIndex: number | undefined): void;
+    setScrollTop(dataIndex: number | undefined, offset?: number): void;
     getScrollTop(): ScrollTypeVertical;
     getSVGIconSrc(svg: any): string;
     destroy(): void;

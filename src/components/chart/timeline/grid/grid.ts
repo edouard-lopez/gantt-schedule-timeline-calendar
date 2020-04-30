@@ -8,7 +8,7 @@
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
 
-import { Cell, RowWithCells, Vido } from '../../../../gstc';
+import { Cell, RowWithCells, Vido, Row } from '../../../../gstc';
 
 /**
  * Bind element action
@@ -56,14 +56,15 @@ export default function ChartTimelineGrid(vido: Vido, props) {
   function generateCells() {
     const width = state.get('$data.chart.dimensions.width');
     const height = state.get('$data.innerHeight');
+    const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
     const time = state.get('$data.chart.time');
     const periodDates = state.get(`$data.chart.time.levels.${time.level}`);
     if (!periodDates || periodDates.length === 0) {
       state.update('$data.chart.grid.rowsWithCells', []);
       return;
     }
-    const visibleRows = state.get('$data.list.visibleRows');
-    styleMap.style.height = height + 'px';
+    const visibleRows: Row[] = state.get('$data.list.visibleRows');
+    styleMap.style.height = height + scrollOffset + 'px';
     styleMap.style.width = width + 'px';
     let top = 0;
     rowsWithCells.length = 0;
@@ -85,7 +86,7 @@ export default function ChartTimelineGrid(vido: Vido, props) {
         cells.push(cell);
       }
       rowsWithCells.push({ row, cells, top, width });
-      top += row.height;
+      top += row.$data.outerHeight;
     }
     state.update('$data.chart.grid.rowsWithCells', rowsWithCells);
   }

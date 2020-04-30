@@ -80,6 +80,8 @@ export default function ChartTimeline(vido: Vido, props) {
     } else {
       innerStyleMap.style.width = '0px';
     }
+    const scrollOffset = state.get('config.scroll.vertical.offset') || 0;
+    innerStyleMap.style['transform'] = `translateY(-${scrollOffset}px)`;
     update();
   }
 
@@ -87,6 +89,7 @@ export default function ChartTimeline(vido: Vido, props) {
     state.subscribeAll(
       [
         '$data.innerHeight',
+        'config.scroll.vertical.offset',
         '$data.chart.dimensions.width',
         '$data.list.visibleRowsHeight',
         '$data.chart.time.dates.day',
