@@ -286,12 +286,13 @@ export class Api {
     return false;
   }
 
-  itemOverlapsWithOthers(item: Item, items: Item[]): boolean {
-    for (const item2 of items) {
+  itemOverlapsWithOthers(item: Item, items: Item[]): Item {
+    for (let i = 0, len = items.length; i < len; i++) {
+      const item2 = items[i];
       const nonZeroTime = item2.time.start && item.time.start && item2.time.end && item.time.end;
-      if (item.id !== item2.id && this.itemsOverlaps(item, item2) && nonZeroTime) return true;
+      if (item.id !== item2.id && this.itemsOverlaps(item, item2) && nonZeroTime) return item2;
     }
-    return false;
+    return null;
   }
 
   fixOverlappedItems(rowItems: Item[]) {
@@ -300,9 +301,10 @@ export class Api {
     for (let item of rowItems) {
       item.$data.position.top = item.top;
       item.$data.position.actualTop = item.$data.position.top + item.gap.top;
-      if (index && this.itemOverlapsWithOthers(item, rowItems)) {
-        while (this.itemOverlapsWithOthers(item, rowItems)) {
-          item.$data.position.top += 1;
+      let overlaps = this.itemOverlapsWithOthers(item, rowItems);
+      if (index && overlaps) {
+        while ((overlaps = this.itemOverlapsWithOthers(item, rowItems))) {
+          item.$data.position.top += overlaps.$data.outerHeight;
           item.$data.position.actualTop = item.$data.position.top + item.gap.top;
         }
       }
@@ -310,9 +312,9 @@ export class Api {
     }
   }
 
-  recalculateRowHeight(row: Row): number {
+  recalculateRowHeight(row: Row, fixOverlapped = false): number {
     let actualHeight = 0;
-    this.fixOverlappedItems(row.$data.items);
+    if (fixOverlapped) this.fixOverlappedItems(row.$data.items);
     for (const item of row.$data.items) {
       actualHeight = Math.max(actualHeight, item.$data.position.top + item.$data.outerHeight);
     }
@@ -325,7 +327,7 @@ export class Api {
   recalculateRowsHeightsAndFixOverlappingItems(rows: Row[]): number {
     let top = 0;
     for (const row of rows) {
-      this.recalculateRowHeight(row);
+      this.recalculateRowHeight(row, true);
       row.$data.position.top = top;
       top += row.$data.outerHeight;
     }

@@ -49,9 +49,9 @@ export declare class Api {
     fillEmptyRowValues(rows: Rows): Rows;
     itemsOnTheSameLevel(item1: Item, item2: Item): boolean;
     itemsOverlaps(item1: Item, item2: Item): boolean;
-    itemOverlapsWithOthers(item: Item, items: Item[]): boolean;
+    itemOverlapsWithOthers(item: Item, items: Item[]): Item;
     fixOverlappedItems(rowItems: Item[]): void;
-    recalculateRowHeight(row: Row): number;
+    recalculateRowHeight(row: Row, fixOverlapped?: boolean): number;
     recalculateRowsHeightsAndFixOverlappingItems(rows: Row[]): number;
     recalculateRowsPercents(rows: Row[], verticalAreaHeight: number): Row[];
     generateParents(rows: any, parentName?: string): {};

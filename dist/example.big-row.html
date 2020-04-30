@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Gantt Schedule Timeline Calendar example #1</title>
+    <style>
+      body {
+        font-family: Roboto, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .gantt-shedule-timeline-calendar__chart-gantt-items-row-item-content {
+        padding: 0px 5px !important;
+        border-radius: 14px;
+      }
+      h1 {
+        font-size: 20px;
+        line-height: 20px;
+      }
+      .resizing {
+        background: rgb(33, 188, 235) !important;
+      }
+    </style>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+
+  <body>
+    <h1>Gantt Schedule Timeline Calendar example #1</h1>
+    <div>
+      <input type="range" min="0" max="100" value="100" id="percent" />
+      <input type="range" min="12" max="26" value="20" id="zoom" />
+      <div style="display: inline-block; width: 100px; text-align: center; font-weight: bold;" id="period"></div>
+      <button id="change-something">Change something</button>
+      <button onclick="deleteRow()">Delete row</button>
+      <button onclick="deleteItem()">Delete item</button>
+      <button onclick="clearAll()">clear all</button>
+      <button onclick="randomizeItems()">randomize items</button>
+      <button onclick="destroy()">destroy</button>
+      <button onclick="replaceData()">replace</button>
+      <button onclick="reload()">reload</button>
+    </div>
+    <div id="app"></div>
+    <script src="./timeline-pointer.plugin.umd.js"></script>
+    <script src="./selection.plugin.umd.js"></script>
+    <script src="./item-movement.plugin.umd.js"></script>
+    <script src="./item-resizing.plugin.umd.js"></script>
+    <script src="./calendar-scroll.plugin.umd.js"></script>
+    <script src="./highlight-weekends.plugin.umd.js"></script>
+    <script src="./gstc.umd.js"></script>
+    <script>
+      const iterations = 100;
+
+      const pallete = [
+        '#E74C3C',
+        '#DA3C78',
+        '#7E349D',
+        '#0077C0',
+        '#07ABA0',
+        '#0EAC51',
+        '#F1892D',
+        '#E3724B',
+        '#AE7C5B',
+        '#6C7A89',
+        '#758586',
+        '#707070',
+      ];
+
+      const rows = {};
+      for (let i = 0; i < iterations; i++) {
+        const withParent = i > 0 && i % 2 === 0;
+        const id = i.toString();
+        rows[id] = {
+          id,
+          label: `row id: ${id}`,
+          progress: 50,
+          parentId: withParent ? (i - 1).toString() : undefined,
+          expanded: false,
+        };
+      }
+
+      const startDate = GSTC.api.date().subtract(1, 'month').valueOf();
+
+      const items = {};
+      for (let i = 0; i < iterations; i++) {
+        let rowId;
+        let id = (rowId = i.toString());
+        let startDayjs = GSTC.api
+          .date(startDate)
+          .startOf('day')
+          .add(Math.floor(Math.random() * 90), 'days');
+        items[id] = {
+          id,
+          label: 'item id ' + id,
+          time: {
+            start: startDayjs.valueOf(),
+            end: startDayjs
+              .add(Math.floor(Math.random() * 10) + 4, 'days')
+              .endOf('day')
+              .valueOf(),
+          },
+          progress: 50,
+          rowId,
+          lines: i > 0 && i % 2 === 0 ? [(i + 1).toString()] : [],
+          style: { background: pallete[Math.floor(Math.random() * pallete.length)] },
+        };
+        if (i === 0) {
+          for (let j = 0; j < 100; j++) {
+            const jid = id + '-row-' + j;
+            items[jid] = {
+              id: jid,
+              rowId,
+              label: jid,
+              time: {
+                start: startDayjs.valueOf(),
+                end: startDayjs
+                  .add(Math.floor(Math.random() * 10) + 4, 'days')
+                  .endOf('day')
+                  .valueOf(),
+              },
+              style: { background: pallete[Math.floor(Math.random() * pallete.length)] },
+            };
+          }
+        }
+        if (Math.round(Math.random()))
+          items[id + '-2'] = {
+            id: id + '-2',
+            label: 'item id ' + id + '-2',
+            time: {
+              start: startDayjs
+                .add(Math.floor(Math.random() * 3), 'day')
+                .startOf('day')
+                .valueOf(),
+              end: startDayjs
+                .add(Math.floor(Math.random() * 10) + 4, 'day')
+                .endOf('day')
+                .valueOf(),
+            },
+            rowId,
+            style: { background: pallete[Math.floor(Math.random() * pallete.length)] },
+          };
+        if (Math.round(Math.random()))
+          items[id].time.start = GSTC.api
+            .date(items[id].time.start)
+            .add(Math.round(Math.random() * 23), 'hour')
+            .valueOf();
+        items[id].label = GSTC.api.date(items[id].time.start).format('YYYY-MM-DD HH:mm');
+      }
+      items['1'].linkedWith = ['3', '2'];
+      items['1'].label = 'linked with 3 and 2';
+      items['2'].time.start = items['1'].time.start;
+      items['2'].time.end = items['1'].time.end;
+      items['3'].time.start = items['1'].time.start;
+      items['3'].time.end = items['1'].time.end;
+
+      const columns = {
+        percent: 100,
+        resizer: {
+          inRealTime: true,
+        },
+        data: {
+          id: {
+            id: 'id',
+            data: 'id',
+            width: 50,
+            header: {
+              content: 'ID',
+            },
+          },
+          label: {
+            id: 'label',
+            data: 'label',
+            expander: true,
+            isHTML: false,
+            width: 230,
+            header: {
+              content: 'Label',
+            },
+          },
+          progress: {
+            id: 'progress',
+            data: 'progress',
+            width: 30,
+            header: {
+              content: '%',
+            },
+          },
+        },
+      };
+
+      let selectionApi;
+      const config = {
+        plugins: [
+          HighlightWeekends.Plugin(),
+          TimelinePointer.Plugin(),
+          Selection.Plugin(),
+          ItemMovement.Plugin(),
+          /*{
+            snapToTime: {
+              start({ startTime }) {
+                return startTime;
+              },
+              end({ endTime }) {
+                return endTime;
+              },
+            },
+            onEnd({ items, time }) {
+              for (const item of items) {
+                const startEndDiff = item.$data.time.endDate.diff(item.$data.time.startDate, 'millisecond');
+                const startDate = item.$data.time.startDate.startOf(time.period);
+                item.time.start = startDate.valueOf();
+                item.$data.time.startDate = startDate;
+                const endDate = item.$data.time.startDate.add(startEndDiff, 'millisecond');
+                item.time.end = endDate.valueOf();
+                item.$data.time.endDate = endDate;
+              }
+              return true;
+            },
+          }*/
+          ItemResizing.Plugin(),
+          CalendarScroll.Plugin(),
+        ],
+        height: 523,
+        scroll: {
+          vertical: {
+            smooth: true,
+          },
+        },
+        list: {
+          rows,
+          columns,
+        },
+        chart: {
+          items,
+        },
+        classNames: {},
+      };
+
+      GSTC.api.wasmStateFromConfig(config).then((GSTCState) => {
+        GSTCState.subscribe('config.plugin.ItemMovement', (itemMovement) => {
+          if (!itemMovement || !itemMovement.item) return;
+          state.update(`config.chart.items.${itemMovement.item.id}.isResizing`, itemMovement.item.resizing);
+        });
+
+        GSTCState.subscribe('$data.chart.time.format.period', (period) => {
+          document.getElementById('period').innerText = period;
+        });
+
+        const element = document.getElementById('app');
+        element.addEventListener('gstc-loaded', () => {
+          console.log('gstc loaded');
+          gstc.api.scrollToTime(new Date().getTime());
+        });
+        const gstc = GSTC({
+          element,
+          state: GSTCState,
+        });
+        window.gstc = gstc; // debug
+        window.GSTCState = GSTCState;
+
+        gstc.state.subscribe('config.chart.time.zoom', (zoom) => {
+          document.getElementById('zoom').value = zoom;
+        });
+
+        document.getElementById('percent').addEventListener('input', (ev) => {
+          gstc.state.update('config.list.columns.percent', +ev.target.value);
+        });
+        document.getElementById('zoom').addEventListener('input', (ev) => {
+          gstc.state.update('config.chart.time.zoom', +ev.target.value);
+          const period = gstc.state.get('config.chart.time');
+        });
+        document.getElementById('change-something').addEventListener('click', () => {
+          gstc.state.update('config.list.rows', (rows) => {
+            for (const rowId in rows) {
+              rows[rowId].label += ' !';
+            }
+            rows['3'].parentId = '1';
+            rows['5'].parentId = '3';
+            rows['9'].parentId = '3';
+            rows['7'].parentId = '5';
+            rows['11'].parentId = '10';
+            rows['13'].parentId = '12';
+            for (let i = 20; i < 50; i++) {
+              rows[i.toString()].parentId = '15';
+            }
+            return rows;
+          });
+        });
+      });
+
+      function deleteRow() {
+        const random = (r) => r[Math.floor(Math.random() * r.length)];
+        GSTCState.update('config.list.rows', (rows) => {
+          const rando = random(Object.keys(rows));
+          const child = Object.values(rows).find((row) => row.parentId === rando);
+          if (rows[rando] && !child) {
+            console.log('deleting', rando, Object.keys(rows), rows[rando]);
+            delete rows[rando];
+          }
+          return rows;
+        });
+      }
+      function deleteItem() {
+        const random = (r) => r[Math.floor(Math.random() * r.length)];
+        GSTCState.update('config.chart.items', (items) => {
+          const rando = random(Object.keys(items));
+          if (items[rando]) {
+            console.log('deleting', rando, Object.keys(items), items[rando]);
+            delete items[rando];
+          }
+          return items;
+        });
+      }
+
+      function clearAll() {
+        GSTCState.update('config.list.rows', {});
+      }
+
+      function randomizeItems() {
+        const rows = Object.keys(GSTCState.get('config.list.rows'));
+        GSTCState.update('config.chart.items', (items) => {
+          Object.values(items).forEach((item) => {
+            item.rowId = rows[Math.floor(Math.random() * rows.length)];
+          });
+          return items;
+        });
+      }
+      function replaceData() {
+        const data = {
+          rows: {
+            row_1: {
+              id: 'row_1',
+              label: 'new row',
+            },
+            row_2: {
+              id: 'row_2',
+              label: 'new row 2',
+              parentId: 'row_1',
+            },
+          },
+          items: {
+            item_1: {
+              id: 'item_1',
+              label: 'new item 1',
+              rowId: 'row_1',
+              time: {
+                start: new Date().getTime(),
+                end: gstc.api.time.date().add(2, 'day').valueOf(),
+              },
+            },
+            item_2: {
+              id: 'item_2',
+              label: 'new item 2',
+              rowId: 'row_2',
+              time: {
+                start: gstc.api.time.date().subtract(2, 'day').valueOf(),
+                end: new Date().getTime(),
+              },
+            },
+          },
+        };
+        GSTCState.update('config', (config) => {
+          config.list.rows = data.rows;
+          config.chart.items = data.items;
+          config.chart.time.from = gstc.api.time.date().startOf('month').valueOf();
+          config.chart.time.to = gstc.api.time.date().add(20, 'day').valueOf();
+          return { ...config };
+        });
+      }
+
+      function changePeriod() {
+        const period = document.getElementById('setperiod').value;
+        //const zoom = GSTC.api.setPeriod(period);
+      }
+
+      function reload() {
+        gstc.reload();
+      }
+
+      function destroy() {
+        gstc.component.destroy();
+      }
+    </script>
+  </body>
+</html>
