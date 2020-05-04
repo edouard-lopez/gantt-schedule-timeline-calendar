@@ -1,1 +1,0 @@
-{"version":3,"file":"ObjectPath.d.ts","sourceRoot":"","sources":["../../../deep-state-observer/ObjectPath.ts"],"names":[],"mappings":"AAAA,MAAM,CAAC,OAAO,OAAO,UAAU;IAC7B,MAAM,CAAC,GAAG,CAAC,IAAI,EAAE,MAAM,EAAE,EAAE,GAAG,KAAA,EAAE,UAAU,GAAE,MAAM,EAAS;IAiB3D,MAAM,CAAC,GAAG,CAAC,IAAI,EAAE,MAAM,EAAE,EAAE,QAAQ,KAAA,EAAE,GAAG,KAAA,EAAE,UAAU,GAAE,MAAM,EAAS;CA0BtE"}

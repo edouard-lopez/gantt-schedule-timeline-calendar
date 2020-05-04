@@ -1,4 +1,4 @@
-import { SlotName, Vido, Slot, SlotPlacement } from 'src/gstc';
+import { SlotName, Vido, SlotPlacement } from '../gstc';
 import { ComponentInstance, lithtml, Component } from '@neuronet.io/vido/vido';
 
 export type SlotInstances = {
