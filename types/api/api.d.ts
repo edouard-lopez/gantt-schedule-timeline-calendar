@@ -51,6 +51,7 @@ export declare class Api {
     itemsOverlaps(item1: Item, item2: Item): boolean;
     itemOverlapsWithOthers(item: Item, items: Item[]): Item;
     fixOverlappedItems(rowItems: Item[]): void;
+    sortItemsByPositionTop(rowItems: Item[]): Item[];
     recalculateRowHeight(row: Row, fixOverlapped?: boolean): number;
     recalculateRowsHeightsAndFixOverlappingItems(rows: Row[]): number;
     recalculateRowsPercents(rows: Row[], verticalAreaHeight: number): Row[];

@@ -11107,10 +11107,17 @@ class Api {
             index++;
         }
     }
+    sortItemsByPositionTop(rowItems) {
+        return rowItems.sort((itemA, itemB) => {
+            return itemA.$data.position.top - itemB.$data.position.top;
+        });
+    }
     recalculateRowHeight(row, fixOverlapped = false) {
         let actualHeight = 0;
-        if (fixOverlapped)
+        if (fixOverlapped) {
             this.fixOverlappedItems(row.$data.items);
+            row.$data.items = this.sortItemsByPositionTop(row.$data.items);
+        }
         for (const item of row.$data.items) {
             actualHeight = Math.max(actualHeight, item.$data.position.top + item.$data.outerHeight);
         }

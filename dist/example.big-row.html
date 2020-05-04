@@ -102,23 +102,21 @@
           lines: i > 0 && i % 2 === 0 ? [(i + 1).toString()] : [],
           style: { background: pallete[Math.floor(Math.random() * pallete.length)] },
         };
-        if (i === 0) {
-          for (let j = 0; j < 100; j++) {
-            const jid = id + '-row-' + j;
-            items[jid] = {
-              id: jid,
-              rowId,
-              label: jid,
-              time: {
-                start: startDayjs.valueOf(),
-                end: startDayjs
-                  .add(Math.floor(Math.random() * 10) + 4, 'days')
-                  .endOf('day')
-                  .valueOf(),
-              },
-              style: { background: pallete[Math.floor(Math.random() * pallete.length)] },
-            };
-          }
+        for (let j = 0; j < 100; j++) {
+          const jid = id + '-row-' + j;
+          items[jid] = {
+            id: jid,
+            rowId,
+            label: jid,
+            time: {
+              start: startDayjs.valueOf(),
+              end: startDayjs
+                .add(Math.floor(Math.random() * 10) + 4, 'days')
+                .endOf('day')
+                .valueOf(),
+            },
+            style: { background: pallete[Math.floor(Math.random() * pallete.length)] },
+          };
         }
         if (Math.round(Math.random()))
           items[id + '-2'] = {
