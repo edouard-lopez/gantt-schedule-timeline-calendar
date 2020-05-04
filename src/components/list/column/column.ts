@@ -94,6 +94,9 @@ export default function ListColumn(vido: Vido, props: Props) {
   const ListColumnHeader = createComponent(ListColumnHeaderComponent, props);
   onDestroy(ListColumnHeader.destroy);
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   onChange((changedProps) => {
     props = changedProps;
     for (const prop in props) {
@@ -102,6 +105,7 @@ export default function ListColumn(vido: Vido, props: Props) {
     calculateStyle();
     ListColumnHeader.change(props);
     visibleRowsChange();
+    slots.change(changedProps);
   });
 
   onDestroy(
@@ -160,7 +164,10 @@ export default function ListColumn(vido: Vido, props: Props) {
           ${ListColumnHeader.html()}
           <div class=${classNameContainer} style=${containerStyleMap} data-actions=${rowActions}>
             <div class=${classNameOffset} style=${offsetStyleMap}>
-              ${visibleRows.map((row) => row.html())}
+              ${slots.html('before', templateProps)}${visibleRows.map((row) => row.html())}${slots.html(
+                'after',
+                templateProps
+              )}
             </div>
           </div>
         </div>

@@ -118,12 +118,14 @@ export declare type Wrapper = (input: htmlResult, props?: any) => htmlResult;
 export interface Wrappers {
     [name: string]: Wrapper;
 }
-export interface Slot {
-    [key: string]: htmlResult[];
-}
-export interface Slots {
-    [name: string]: Slot;
-}
+export declare type SlotName = 'main' | 'scroll-bar' | 'list' | 'list-column' | 'list-column-header' | 'list-column-header-resizer' | 'list-column-header-resizer-dots' | 'list-column-row' | 'list-column-row-expander' | 'list-column-row-expander-toggle' | 'list-toggle' | 'chart' | 'chart-calendar' | 'chart-calendar-date' | 'chart-timeline' | 'chart-timeline-grid' | 'chart-timeline-grid-row' | 'chart-timeline-grid-row-cell' | 'chart-timeline-items' | 'chart-timeline-items-row' | 'chart-timeline-items-row-item';
+export declare type SlotPlacement = 'before' | 'after' | 'inside';
+export declare type Slot = {
+    [placement in SlotPlacement]?: Component[];
+};
+export declare type Slots = {
+    [name in SlotName]?: Slot;
+};
 export interface ColumnResizer {
     width?: number;
     inRealTime?: boolean;
@@ -391,10 +393,10 @@ export interface ActionFunctionResult {
     update?: (element: HTMLElement, data: unknown) => void;
     destroy?: (element: HTMLElement, data: unknown) => void;
 }
-export declare type Action = (element: HTMLElement, data: unknown) => ActionFunctionResult | void;
-export interface Actions {
-    [name: string]: Action[];
-}
+export declare type Action = (element: HTMLElement, data: unknown) => ActionFunctionResult | ActionFunctionResult | void;
+export declare type Actions = {
+    [name in SlotName]?: Action[];
+};
 export interface LocaleRelativeTime {
     future?: string;
     past?: string;
@@ -513,6 +515,7 @@ declare namespace GSTC {
         stateFromConfig: typeof import("./api/api").stateFromConfig;
         wasmStateFromConfig: typeof import("./api/api").wasmStateFromConfig;
         merge: typeof import("@neuronet.io/vido/helpers").mergeDeep;
+        lithtml: any;
         date(time: any): Dayjs;
         setPeriod(period: OpUnitType): number;
         dayjs: typeof import("dayjs");

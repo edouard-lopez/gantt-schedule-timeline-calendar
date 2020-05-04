@@ -64,11 +64,16 @@ export default function ListToggle(vido: Vido, props = {}) {
     }
   }
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       html`
         <div class=${className} style=${styleMap} @pointerdown=${pointerDown} @pointerup=${pointerUp}>
-          <img src=${open ? toggleIconsSrc.close : toggleIconsSrc.open} />
+          ${slots.html('before', templateProps)}<img
+            src=${open ? toggleIconsSrc.close : toggleIconsSrc.open}
+          />${slots.html('after', templateProps)}
         </div>
       `,
       { props, vido, templateProps }

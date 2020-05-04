@@ -74,11 +74,15 @@ export default function ChartTimelineGridRow(vido: Vido, props: RowWithCells) {
   let shouldDetach = false;
   const detach = new Detach(() => shouldDetach);
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   const rowsCellsComponents = [];
   onChange(function onPropsChange(changedProps, options) {
     if (options.leave || changedProps.row === undefined) {
       shouldDetach = true;
       reuseComponents(rowsCellsComponents, [], (cell) => cell, GridCellComponent, false);
+      slots.change(changedProps, options);
       update();
       return;
     }
@@ -105,6 +109,7 @@ export default function ChartTimelineGridRow(vido: Vido, props: RowWithCells) {
     for (const prop in props) {
       actionProps[prop] = props[prop];
     }
+    slots.change(changedProps, options);
     update();
   });
 
@@ -122,7 +127,10 @@ export default function ChartTimelineGridRow(vido: Vido, props: RowWithCells) {
     return wrapper(
       html`
         <div detach=${detach} class=${className} data-actions=${actions} style=${styleMap}>
-          ${rowsCellsComponents.map((r) => r.html())}
+          ${slots.html('before', templateProps)}${rowsCellsComponents.map((r) => r.html())}${slots.html(
+            'after',
+            templateProps
+          )}
         </div>
       `,
       { vido, props, templateProps }

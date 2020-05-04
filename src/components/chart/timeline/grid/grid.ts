@@ -118,13 +118,19 @@ export default function ChartTimelineGrid(vido: Vido, props) {
     rowsComponents.forEach((row) => row.destroy());
   });
   componentActions.push(BindElementAction);
-
   const actions = Actions.create(componentActions, actionProps);
+
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       html`
         <div class=${className} data-actions=${actions} style=${styleMap}>
-          ${rowsComponents.map((r) => r.html())}
+          ${slots.html('before', templateProps)}${rowsComponents.map((r) => r.html())}${slots.html(
+            'after',
+            templateProps
+          )}
         </div>
       `,
       { props, vido, templateProps }

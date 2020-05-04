@@ -119,13 +119,19 @@ export default function List(vido: Vido, props = {}) {
 
   const actions = Actions.create(componentActions, { ...props, api, state });
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       cache(
         list.columns.percent > 0
           ? html`
               <div class=${className} data-actions=${actions} style=${styleMap} @wheel=${onWheel}>
-                ${listColumns.map((c) => c.html())}
+                ${slots.html('before', templateProps)}${listColumns.map((c) => c.html())}${slots.html(
+                  'after',
+                  templateProps
+                )}
               </div>
             `
           : ''

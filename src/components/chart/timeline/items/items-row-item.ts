@@ -149,6 +149,9 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
     </div>
   `;
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   onChange(function onPropsChange(changedProps, options) {
     if (options.leave || changedProps.row === undefined || changedProps.item === undefined) {
       leave = true;
@@ -156,6 +159,7 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
       props.item.$data.detached = shouldDetach;
       //if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
       //props = changedProps;
+      slots.change(changedProps, options);
       return update();
     } else {
       shouldDetach = false;
@@ -167,6 +171,7 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
     actionProps.item = props.item;
     actionProps.row = props.row;
     updateItem();
+    slots.change(changedProps, options);
   });
 
   const componentActions = api.getActions(componentName);
@@ -189,11 +194,11 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
     wrapper(
       html`
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
-          ${cutterLeft()}
+          ${cutterLeft()}${slots.html('before', templateProps)}
           <div class=${labelClassName} title=${props.item.isHTML ? null : props.item.label}>
-            ${props.item.isHTML ? unsafeHTML(props.item.label) : props.item.label}
+            ${slots.html('inside', templateProps)}${props.item.isHTML ? unsafeHTML(props.item.label) : props.item.label}
           </div>
-          ${cutterRight()}
+          ${slots.html('after', templateProps)}${cutterRight()}
         </div>
       `,
       { vido, props, templateProps }

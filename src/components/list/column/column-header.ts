@@ -43,6 +43,9 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
     componentsSubs.forEach((unsub) => unsub());
   });
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   onChange((changedProps) => {
     props = changedProps;
     for (const prop in props) {
@@ -50,6 +53,7 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
     }
     ListColumnHeaderResizer.change(props);
     ListColumnRowExpander.change(props);
+    slots.change(changedProps);
   });
 
   let className, contentClass;
@@ -97,7 +101,9 @@ export default function ListColumnHeader(vido: Vido, props: Props) {
     wrapper(
       html`
         <div class=${className} style=${styleMap} data-actions=${actions}>
-          ${cache(props.column.expander ? withExpander() : withoutExpander())}
+          ${slots.html('before', templateProps)}${cache(
+            props.column.expander ? withExpander() : withoutExpander()
+          )}${slots.html('after', templateProps)}
         </div>
       `,
       { vido, props, templateProps }

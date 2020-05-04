@@ -45,6 +45,9 @@ export default function ListColumnRowExpanderToggle(vido: Vido, props: Props) {
     })
   );
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   function expandedChangeRow(isExpanded) {
     expanded = isExpanded;
     update();
@@ -57,6 +60,7 @@ export default function ListColumnRowExpanderToggle(vido: Vido, props: Props) {
     }
     if (expandedSub) expandedSub();
     if (props?.row?.id) expandedSub = state.subscribe(`config.list.rows.${props.row.id}.expanded`, expandedChangeRow);
+    slots.change(changedProps);
   }
 
   function expandedChangeNoRow(bulk) {
@@ -114,7 +118,7 @@ export default function ListColumnRowExpanderToggle(vido: Vido, props: Props) {
     wrapper(
       html`
         <div class=${className} data-action=${actions} @click=${toggle}>
-          ${cache(getIcon())}
+          ${slots.html('before', templateProps)}${cache(getIcon())}${slots.html('after', templateProps)}
         </div>
       `,
       { vido, props, templateProps }

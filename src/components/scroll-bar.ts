@@ -336,6 +336,9 @@ export default function ScrollBar(vido: Vido, props: Props) {
   const innerComponentActions = [InnerAction];
   const innerActions = Actions.create(innerComponentActions, { api, state, props });
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return () =>
     html`
       <div
@@ -343,11 +346,15 @@ export default function ScrollBar(vido: Vido, props: Props) {
         class=${className + ' ' + className + '--' + props.type + classNameOuterActive}
         style=${styleMapOuter}
       >
+        ${slots.html('before')}
         <div
           data-actions=${innerActions}
           class=${classNameInner + ' ' + classNameInner + '--' + props.type + classNameInnerActive}
           style=${styleMapInner}
-        ></div>
+        >
+          ${slots.html('inside')}
+        </div>
+        ${slots.html('after')}
       </div>
     `;
 }

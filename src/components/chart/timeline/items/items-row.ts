@@ -120,10 +120,14 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
     })
   );
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   onChange(function onPropsChange(changedProps: Props, options) {
     if (options.leave || changedProps.row === undefined) {
       shouldDetach = true;
       reuseComponents(itemComponents, [], (item) => null, ItemComponent, false);
+      slots.change(changedProps, options);
       return update();
     }
     props = changedProps;
@@ -136,6 +140,7 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
       classNameCurrent = className;
     }
     updateRow(props.row);
+    slots.change(changedProps, options);
   });
 
   onDestroy(() => {
@@ -153,7 +158,10 @@ export default function ChartTimelineItemsRow(vido: Vido, props: Props) {
     wrapper(
       html`
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
-          ${itemComponents.map((i) => i.html())}
+          ${slots.html('before', templateProps)}${itemComponents.map((i) => i.html())}${slots.html(
+            'after',
+            templateProps
+          )}
         </div>
       `,
       { props, vido, templateProps }

@@ -88,13 +88,19 @@ export default function Chart(vido: Vido, props = {}) {
 
   const actions = Actions.create(componentActions, { api, state });
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       html`
         <div class=${className} data-actions=${actions} @wheel=${onWheel}>
-          ${ChartCalendar.html()}${ChartTimeline.html()}${ScrollBarVertical.html()}${calculatedZoomMode
+          ${slots.html('before', templateProps)}${ChartCalendar.html()}${slots.html(
+            'inside',
+            templateProps
+          )}${ChartTimeline.html()}${ScrollBarVertical.html()}${calculatedZoomMode
             ? null
-            : ScrollBarHorizontal.html()}
+            : ScrollBarHorizontal.html()}${slots.html('after', templateProps)}
         </div>
       `,
       { vido, props: {}, templateProps }

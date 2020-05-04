@@ -155,13 +155,38 @@ export interface Wrappers {
   [name: string]: Wrapper;
 }
 
-export interface Slot {
-  [key: string]: htmlResult[];
-}
+export type SlotName =
+  | 'main'
+  | 'scroll-bar'
+  | 'list'
+  | 'list-column'
+  | 'list-column-header'
+  | 'list-column-header-resizer'
+  | 'list-column-header-resizer-dots'
+  | 'list-column-row'
+  | 'list-column-row-expander'
+  | 'list-column-row-expander-toggle'
+  | 'list-toggle'
+  | 'chart'
+  | 'chart-calendar'
+  | 'chart-calendar-date'
+  | 'chart-timeline'
+  | 'chart-timeline-grid'
+  | 'chart-timeline-grid-row'
+  | 'chart-timeline-grid-row-cell'
+  | 'chart-timeline-items'
+  | 'chart-timeline-items-row'
+  | 'chart-timeline-items-row-item';
 
-export interface Slots {
-  [name: string]: Slot;
-}
+export type SlotPlacement = 'before' | 'after' | 'inside';
+
+export type Slot = {
+  [placement in SlotPlacement]?: Component[];
+};
+
+export type Slots = {
+  [name in SlotName]?: Slot;
+};
 
 export interface ColumnResizer {
   width?: number;
@@ -473,11 +498,11 @@ export interface ActionFunctionResult {
   destroy?: (element: HTMLElement, data: unknown) => void;
 }
 
-export type Action = (element: HTMLElement, data: unknown) => ActionFunctionResult | void;
+export type Action = (element: HTMLElement, data: unknown) => ActionFunctionResult | ActionFunctionResult | void;
 
-export interface Actions {
-  [name: string]: Action[];
-}
+export type Actions = {
+  [name in SlotName]?: Action[];
+};
 
 export interface LocaleRelativeTime {
   future?: string;

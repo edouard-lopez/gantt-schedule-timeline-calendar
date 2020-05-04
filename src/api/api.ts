@@ -28,6 +28,8 @@ import {
   ScrollTypeVertical,
   Rows,
 } from '../gstc';
+import { generateSlots } from './slots';
+import { lithtml } from '@neuronet.io/vido';
 import helpers from '@neuronet.io/vido/helpers';
 const mergeDeep = helpers.mergeDeep;
 
@@ -90,6 +92,7 @@ export const publicApi = {
   stateFromConfig,
   wasmStateFromConfig,
   merge: mergeDeep,
+  lithtml,
   date(time) {
     return time ? dayjs(time) : dayjs();
   },
@@ -143,6 +146,7 @@ export class Api {
     }
   }
 
+  generateSlots = generateSlots;
   mergeDeep = mergeDeep;
   getClass = getClass;
   allActions = [];

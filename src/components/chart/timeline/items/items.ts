@@ -62,11 +62,17 @@ export default function ChartTimelineItems(vido: Vido, props = {}) {
 
   const actions = Actions.create(componentActions, { api, state });
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       html`
         <div class=${className} style=${styleMap} data-actions=${actions}>
-          ${rowsComponents.map((r) => r.html())}
+          ${slots.html('before', templateProps)}${rowsComponents.map((r) => r.html())}${slots.html(
+            'after',
+            templateProps
+          )}
         </div>
       `,
       { props, vido, templateProps }

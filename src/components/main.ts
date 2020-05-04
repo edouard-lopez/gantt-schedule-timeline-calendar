@@ -935,6 +935,9 @@ export default function Main(vido: Vido, props = {}) {
   const actionProps = { ...props, api, state };
   const mainActions = Actions.create(componentActions, actionProps);
 
+  const slots = api.generateSlots('main', vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       html`
@@ -945,7 +948,10 @@ export default function Main(vido: Vido, props = {}) {
           data-actions=${mainActions}
           @wheel=${onWheel}
         >
-          ${List.html()}${Chart.html()}
+          ${slots.html('before', templateProps)}${List.html()}${slots.html(
+            'inside',
+            templateProps
+          )}${Chart.html()}${slots.html('after', templateProps)}
         </div>
       `,
       { props, vido, templateProps }

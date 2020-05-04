@@ -47,6 +47,9 @@ export default function ChartTimeline(vido: Vido, props) {
   );
   onDestroy(ListToggle.destroy);
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   let className, classNameInner;
   onDestroy(
     state.subscribe('config.classNames', () => {
@@ -121,7 +124,10 @@ export default function ChartTimeline(vido: Vido, props) {
       html`
         <div class=${className} style=${styleMap} data-actions=${actions}>
           <div class=${classNameInner} style=${innerStyleMap}>
-            ${Grid.html()}${Items.html()}${showToggle ? ListToggle.html() : ''}
+            ${slots.html('before', templateProps)}${Grid.html()}${slots.html(
+              'inside',
+              templateProps
+            )}${Items.html()}${showToggle ? ListToggle.html() : ''}${slots.html('after', templateProps)}
           </div>
         </div>
       `,

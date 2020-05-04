@@ -29,9 +29,9 @@ import ChartTimelineItems from './components/chart/timeline/items/items';
 import ChartTimelineItemsRow from './components/chart/timeline/items/items-row';
 import ChartTimelineItemsRowItem from './components/chart/timeline/items/items-row-item';
 
-import { Config } from './gstc';
+import { Config, Slots, SlotName, Actions, Slot } from './gstc';
 
-export const actionNames = [
+export const actionNames: SlotName[] = [
   'main',
   'scroll-bar',
   'list',
@@ -55,24 +55,22 @@ export const actionNames = [
   'chart-timeline-items-row-item',
 ];
 
-function generateEmptyActions() {
+function generateEmptyActions(): Actions {
   const actions = {};
   actionNames.forEach((name) => (actions[name] = []));
   return actions;
 }
 
-function generateEmptySlots() {
-  const slots = {};
+function generateEmptySlots(): Slots {
+  const slots: Slots = {};
   actionNames.forEach((name) => {
-    slots[name] = { before: [], after: [] };
+    slots[name] = { before: [], inside: [], after: [] } as Slot;
   });
   return slots;
 }
 
 // default configuration
 function defaultConfig(): Config {
-  const actions = generateEmptyActions();
-  const slots = generateEmptySlots();
   return {
     plugins: [],
     plugin: {},
@@ -162,6 +160,7 @@ function defaultConfig(): Config {
         return input;
       },
     },
+    slots: generateEmptySlots(),
     list: {
       rows: {},
       row: {
@@ -458,9 +457,8 @@ function defaultConfig(): Config {
       items: {},
       spacing: 1,
     },
-    slots,
     classNames: {},
-    actions,
+    actions: generateEmptyActions(),
     locale: {
       name: 'en',
       weekdays: 'Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday'.split('_'),

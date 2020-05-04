@@ -46,6 +46,9 @@ export default function ListColumnRowExpander(vido: Vido, props: Props) {
     })
   );
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   if (props.row) {
     function onPropsChange(changedProps) {
       props = changedProps;
@@ -53,6 +56,7 @@ export default function ListColumnRowExpander(vido: Vido, props: Props) {
         actionProps[prop] = props[prop];
       }
       ListColumnRowExpanderToggle.change(props);
+      slots.change(changedProps);
     }
     onChange(onPropsChange);
   }
@@ -63,7 +67,10 @@ export default function ListColumnRowExpander(vido: Vido, props: Props) {
     wrapper(
       html`
         <div class=${className} data-action=${actions}>
-          ${ListColumnRowExpanderToggle.html()}
+          ${slots.html('before', templateProps)}${ListColumnRowExpanderToggle.html()}${slots.html(
+            'after',
+            templateProps
+          )}
         </div>
       `,
       { vido, props, templateProps }

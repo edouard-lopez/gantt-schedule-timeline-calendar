@@ -213,7 +213,33 @@
         chart: {
           items,
         },
-        classNames: {},
+        slots: {
+          'chart-timeline-items-row-item': {
+            before: [
+              function ItemSlot(vido, props = {}) {
+                const { html, onChange, StyleMap } = vido;
+                onChange((changedProps) => {
+                  props = changedProps;
+                });
+                const styleMap = new StyleMap({ 'margin-left': '8px' });
+                return (templateProps) => html`<div style=${styleMap}>(id:${props.item.id})</div>`;
+              },
+            ],
+          },
+          'chart-timeline-grid-row-cell': {
+            inside: [
+              function GridCellSlot(vido, props = {}) {
+                const { html, onChange, StyleMap } = vido;
+                onChange((changedProps) => {
+                  props = changedProps;
+                });
+                const styleMap = new StyleMap({ 'font-size': '10px', color: 'rgba(0,0,0,0.1)', 'line-height': '6em' });
+                return (templateProps) =>
+                  html`<div style=${styleMap}>${props.time.leftGlobalDate.format('YYYY-MM-DD')}</div>`;
+              },
+            ],
+          },
+        },
       };
 
       GSTC.api.wasmStateFromConfig(config).then((GSTCState) => {

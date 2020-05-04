@@ -80,19 +80,24 @@ export default function ChartCalendar(vido: Vido, props) {
   componentActions.push((element) => {
     state.update('$data.elements.chart-calendar', element);
   });
-
   const actions = Actions.create(componentActions, actionProps);
+
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   return (templateProps) =>
     wrapper(
       html`
         <div class=${className} data-actions=${actions} style=${styleMap}>
+          ${slots.html('before', templateProps)}
           ${components.map(
             (components, level) => html`
               <div class=${className + '-dates ' + className + `-dates--level-${level}`}>
-                ${components.map((m) => m.html())}
+                ${slots.html('inside', templateProps)}${components.map((m) => m.html())}
               </div>
             `
           )}
+          ${slots.html('after', templateProps)}
         </div>
       `,
       { props, vido, templateProps }

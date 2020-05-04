@@ -6684,6 +6684,8 @@
 	    }
 	    const actionProps = Object.assign(Object.assign({}, props), { api, state });
 	    const mainActions = Actions.create(componentActions, actionProps);
+	    const slots = api.generateSlots('main', vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(html `
         <div
           data-info-url="https://github.com/neuronetio/gantt-schedule-timeline-calendar"
@@ -6692,7 +6694,7 @@
           data-actions=${mainActions}
           @wheel=${onWheel}
         >
-          ${List.html()}${Chart.html()}
+          ${slots.html('before', templateProps)}${List.html()}${slots.html('inside', templateProps)}${Chart.html()}${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -7004,17 +7006,23 @@
 	    const outerActions = Actions.create(outerComponentActions, { api, state, props });
 	    const innerComponentActions = [InnerAction];
 	    const innerActions = Actions.create(innerComponentActions, { api, state, props });
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return () => html `
       <div
         data-actions=${outerActions}
         class=${className + ' ' + className + '--' + props.type + classNameOuterActive}
         style=${styleMapOuter}
       >
+        ${slots.html('before')}
         <div
           data-actions=${innerActions}
           class=${classNameInner + ' ' + classNameInner + '--' + props.type + classNameInnerActive}
           style=${styleMapInner}
-        ></div>
+        >
+          ${slots.html('inside')}
+        </div>
+        ${slots.html('after')}
       </div>
     `;
 	}
@@ -7117,10 +7125,12 @@
 	    }
 	    componentActions.push(ListAction);
 	    const actions = Actions.create(componentActions, Object.assign(Object.assign({}, props), { api, state }));
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(cache(list.columns.percent > 0
 	        ? html `
               <div class=${className} data-actions=${actions} style=${styleMap} @wheel=${onWheel}>
-                ${listColumns.map((c) => c.html())}
+                ${slots.html('before', templateProps)}${listColumns.map((c) => c.html())}${slots.html('after', templateProps)}
               </div>
             `
 	        : ''), { vido, props: {}, templateProps });
@@ -7198,6 +7208,8 @@
 	    ], calculateStyle, { bulk: true }));
 	    const ListColumnHeader = createComponent(ListColumnHeaderComponent, props);
 	    onDestroy(ListColumnHeader.destroy);
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    onChange((changedProps) => {
 	        props = changedProps;
 	        for (const prop in props) {
@@ -7206,6 +7218,7 @@
 	        calculateStyle();
 	        ListColumnHeader.change(props);
 	        visibleRowsChange();
+	        slots.change(changedProps);
 	    });
 	    onDestroy(state.subscribe('config.classNames', (value) => {
 	        className = api.getClass(componentName);
@@ -7241,7 +7254,7 @@
           ${ListColumnHeader.html()}
           <div class=${classNameContainer} style=${containerStyleMap} data-actions=${rowActions}>
             <div class=${classNameOffset} style=${offsetStyleMap}>
-              ${visibleRows.map((row) => row.html())}
+              ${slots.html('before', templateProps)}${visibleRows.map((row) => row.html())}${slots.html('after', templateProps)}
             </div>
           </div>
         </div>
@@ -7276,6 +7289,8 @@
 	        ListColumnRowExpander.destroy();
 	        componentsSubs.forEach((unsub) => unsub());
 	    });
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    onChange((changedProps) => {
 	        props = changedProps;
 	        for (const prop in props) {
@@ -7283,6 +7298,7 @@
 	        }
 	        ListColumnHeaderResizer.change(props);
 	        ListColumnRowExpander.change(props);
+	        slots.change(changedProps);
 	    });
 	    let className, contentClass;
 	    onDestroy(state.subscribe('config.classNames', () => {
@@ -7318,7 +7334,7 @@
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div class=${className} style=${styleMap} data-actions=${actions}>
-          ${cache(props.column.expander ? withExpander() : withoutExpander())}
+          ${slots.html('before', templateProps)}${cache(props.column.expander ? withExpander() : withoutExpander())}${slots.html('after', templateProps)}
         </div>
       `, { vido, props, templateProps });
 	}
@@ -7349,6 +7365,8 @@
 	        dotClass = api.getClass(componentName + '-dots-dot');
 	        update();
 	    }));
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    function updateData() {
 	        if (!props.column)
 	            return;
@@ -7357,6 +7375,7 @@
 	        dotsStyleMap.style['--width'] = list.columns.resizer.width + 'px';
 	        inRealTime = list.columns.resizer.inRealTime;
 	        state.update('$data.list.width', calculatedWidth);
+	        slots.change(props);
 	        update();
 	    }
 	    onChange((changedProps) => {
@@ -7405,12 +7424,15 @@
 	    const dotsActions = Actions.create(componentDotsActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-actions=${actions}>
+          ${slots.html('before', templateProps)}
           <div class=${containerClass}>
             ${cache(props.column.header.html ? unsafeHTML(props.column.header.html) : props.column.header.content)}
           </div>
+          ${slots.html('inside', templateProps)}
           <div class=${dotsClass} style=${dotsStyleMap} data-actions=${dotsActions}>
             ${dots.map((dot) => html ` <div class=${dotClass} /> `)}
           </div>
+          ${slots.html('after', templateProps)}
         </div>
       `, { vido, props, templateProps });
 	}
@@ -7478,9 +7500,12 @@
 	        update();
 	    }));
 	    let classNameCurrent = className;
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    function onPropsChange(changedProps, options) {
 	        if (options.leave || changedProps.row === undefined || changedProps.column === undefined) {
 	            shouldDetach = true;
+	            slots.change(changedProps, options);
 	            update();
 	            return;
 	        }
@@ -7491,6 +7516,7 @@
 	        }
 	        if (!props.column || !props.row || !props.row.$data) {
 	            shouldDetach = true;
+	            slots.change(changedProps, options);
 	            update();
 	            return;
 	        }
@@ -7533,6 +7559,7 @@
 	        if (ListColumnRowExpander) {
 	            ListColumnRowExpander.change(props);
 	        }
+	        slots.change(changedProps, options);
 	        update();
 	    }
 	    onChange(onPropsChange);
@@ -7562,7 +7589,7 @@
         <div detach=${detach} class=${classNameCurrent} style=${styleMap} data-actions=${actions}>
           ${props.column.expander ? ListColumnRowExpander.html() : null}
           <div class=${className + '-content'}>
-            ${props.column.isHTML ? getHtml() : getText()}
+            ${slots.html('before', templateProps)}${props.column.isHTML ? getHtml() : getText()}${slots.html('after', templateProps)}
           </div>
         </div>
       `, { vido, props, templateProps });
@@ -7596,6 +7623,8 @@
 	        className = api.getClass(componentName);
 	        update();
 	    }));
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    if (props.row) {
 	        function onPropsChange(changedProps) {
 	            props = changedProps;
@@ -7603,13 +7632,14 @@
 	                actionProps[prop] = props[prop];
 	            }
 	            ListColumnRowExpanderToggle.change(props);
+	            slots.change(changedProps);
 	        }
 	        onChange(onPropsChange);
 	    }
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-action=${actions}>
-          ${ListColumnRowExpanderToggle.html()}
+          ${slots.html('before', templateProps)}${ListColumnRowExpanderToggle.html()}${slots.html('after', templateProps)}
         </div>
       `, { vido, props, templateProps });
 	}
@@ -7648,6 +7678,8 @@
 	        }
 	        update();
 	    }));
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    function expandedChangeRow(isExpanded) {
 	        expanded = isExpanded;
 	        update();
@@ -7663,6 +7695,7 @@
 	            expandedSub();
 	        if ((_a = props === null || props === void 0 ? void 0 : props.row) === null || _a === void 0 ? void 0 : _a.id)
 	            expandedSub = state.subscribe(`config.list.rows.${props.row.id}.expanded`, expandedChangeRow);
+	        slots.change(changedProps);
 	    }
 	    function expandedChangeNoRow(bulk) {
 	        for (const rowExpanded of bulk) {
@@ -7712,7 +7745,7 @@
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-action=${actions} @click=${toggle}>
-          ${cache(getIcon())}
+          ${slots.html('before', templateProps)}${cache(getIcon())}${slots.html('after', templateProps)}
         </div>
       `, { vido, props, templateProps });
 	}
@@ -7766,9 +7799,13 @@
 	            toggle();
 	        }
 	    }
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(html `
         <div class=${className} style=${styleMap} @pointerdown=${pointerDown} @pointerup=${pointerUp}>
-          <img src=${open ? toggleIconsSrc.close : toggleIconsSrc.open} />
+          ${slots.html('before', templateProps)}<img
+            src=${open ? toggleIconsSrc.close : toggleIconsSrc.open}
+          />${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -7842,11 +7879,13 @@
 	        ro.disconnect();
 	    });
 	    const actions = Actions.create(componentActions, { api, state });
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-actions=${actions} @wheel=${onWheel}>
-          ${ChartCalendar.html()}${ChartTimeline.html()}${ScrollBarVertical.html()}${calculatedZoomMode
+          ${slots.html('before', templateProps)}${ChartCalendar.html()}${slots.html('inside', templateProps)}${ChartTimeline.html()}${ScrollBarVertical.html()}${calculatedZoomMode
         ? null
-        : ScrollBarHorizontal.html()}
+        : ScrollBarHorizontal.html()}${slots.html('after', templateProps)}
         </div>
       `, { vido, props: {}, templateProps });
 	}
@@ -7915,13 +7954,17 @@
 	        state.update('$data.elements.chart-calendar', element);
 	    });
 	    const actions = Actions.create(componentActions, actionProps);
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-actions=${actions} style=${styleMap}>
+          ${slots.html('before', templateProps)}
           ${components.map((components, level) => html `
               <div class=${className + '-dates ' + className + `-dates--level-${level}`}>
-                ${components.map((m) => m.html())}
+                ${slots.html('inside', templateProps)}${components.map((m) => m.html())}
               </div>
             `)}
+          ${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -8004,11 +8047,14 @@
 	    }
 	    let shouldDetach = false;
 	    const detach = new Detach(() => shouldDetach);
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    let timeSub;
 	    const actionProps = { date: props.date, period: props.period, api, state };
 	    onChange((changedProps, options) => {
 	        if (options.leave) {
 	            shouldDetach = true;
+	            slots.change(changedProps, options);
 	            return update();
 	        }
 	        shouldDetach = false;
@@ -8021,6 +8067,7 @@
 	        timeSub = state.subscribeAll(['$data.chart.time', 'config.chart.calendar.levels'], updateDate, {
 	            bulk: true,
 	        });
+	        slots.change(changedProps, options);
 	    });
 	    onDestroy(() => {
 	        timeSub();
@@ -8043,7 +8090,7 @@
           style=${styleMap}
           data-actions=${actions}
         >
-          ${htmlFormatted}
+          ${slots.html('before', templateProps)}${htmlFormatted}${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -8084,6 +8131,8 @@
 	        ListToggle = createComponent(component);
 	    }));
 	    onDestroy(ListToggle.destroy);
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    let className, classNameInner;
 	    onDestroy(state.subscribe('config.classNames', () => {
 	        className = api.getClass(componentName);
@@ -8140,7 +8189,7 @@
 	    return (templateProps) => wrapper(html `
         <div class=${className} style=${styleMap} data-actions=${actions}>
           <div class=${classNameInner} style=${innerStyleMap}>
-            ${Grid.html()}${Items.html()}${showToggle ? ListToggle.html() : ''}
+            ${slots.html('before', templateProps)}${Grid.html()}${slots.html('inside', templateProps)}${Items.html()}${showToggle ? ListToggle.html() : ''}${slots.html('after', templateProps)}
           </div>
         </div>
       `, { props, vido, templateProps });
@@ -8250,9 +8299,11 @@
 	    });
 	    componentActions.push(BindElementAction$3);
 	    const actions = Actions.create(componentActions, actionProps);
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(html `
         <div class=${className} data-actions=${actions} style=${styleMap}>
-          ${rowsComponents.map((r) => r.html())}
+          ${slots.html('before', templateProps)}${rowsComponents.map((r) => r.html())}${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -8313,12 +8364,15 @@
 	    }, true);
 	    let shouldDetach = false;
 	    const detach = new Detach(() => shouldDetach);
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    const rowsCellsComponents = [];
 	    onChange(function onPropsChange(changedProps, options) {
 	        var _a, _b, _c, _d, _e, _f, _g;
 	        if (options.leave || changedProps.row === undefined) {
 	            shouldDetach = true;
 	            reuseComponents(rowsCellsComponents, [], (cell) => cell, GridCellComponent, false);
+	            slots.change(changedProps, options);
 	            update();
 	            return;
 	        }
@@ -8345,6 +8399,7 @@
 	        for (const prop in props) {
 	            actionProps[prop] = props[prop];
 	        }
+	        slots.change(changedProps, options);
 	        update();
 	    });
 	    onDestroy(function destroy() {
@@ -8357,7 +8412,7 @@
 	    return (templateProps) => {
 	        return wrapper(html `
         <div detach=${detach} class=${className} data-actions=${actions} style=${styleMap}>
-          ${rowsCellsComponents.map((r) => r.html())}
+          ${slots.html('before', templateProps)}${rowsCellsComponents.map((r) => r.html())}${slots.html('after', templateProps)}
         </div>
       `, { vido, props, templateProps });
 	    };
@@ -8400,7 +8455,7 @@
 	    }
 	}
 	function ChartTimelineGridRowCell(vido, props) {
-	    const { api, state, onDestroy, Detach, Actions, update, html, onChange, StyleMap } = vido;
+	    const { api, state, onDestroy, Detach, Actions, update, html, onChange, StyleMap, createComponent } = vido;
 	    const componentName = 'chart-timeline-grid-row-cell';
 	    const actionProps = Object.assign(Object.assign({}, props), { api,
 	        state });
@@ -8412,6 +8467,8 @@
 	        wrapper = value;
 	        update();
 	    }));
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    let className;
 	    function updateClassName(time) {
 	        className = api.getClass(componentName);
@@ -8421,14 +8478,11 @@
 	    }
 	    updateClassName(props.time);
 	    const styleMap = new StyleMap({ width: '', height: '' });
-	    /**
-	     * On props change
-	     * @param {any} changedProps
-	     */
 	    function onPropsChange(changedProps, options) {
 	        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 	        if (options.leave || changedProps.row === undefined) {
 	            shouldDetach = true;
+	            slots.change(changedProps, options);
 	            return update();
 	        }
 	        shouldDetach = false;
@@ -8450,13 +8504,18 @@
 	        const currentStyle = (_k = (_j = (_h = (_g = props === null || props === void 0 ? void 0 : props.row) === null || _g === void 0 ? void 0 : _g.style) === null || _h === void 0 ? void 0 : _h.grid) === null || _j === void 0 ? void 0 : _j.cell) === null || _k === void 0 ? void 0 : _k.current;
 	        if (currentStyle)
 	            styleMap.setStyle(Object.assign(Object.assign({}, styleMap.style), currentStyle));
+	        slots.change(props, options);
 	        update();
 	    }
 	    onChange(onPropsChange);
 	    componentActions.push(BindElementAction$5);
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => {
-	        return wrapper(html ` <div detach=${detach} class=${className} data-actions=${actions} style=${styleMap}></div> `, {
+	        return wrapper(html `${slots.html('before', templateProps)}
+        <div detach=${detach} class=${className} data-actions=${actions} style=${styleMap}>
+          ${slots.html('inside', templateProps)}
+        </div>
+        ${slots.html('after', templateProps)}`, {
 	            props,
 	            vido,
 	            templateProps,
@@ -8508,9 +8567,11 @@
 	        rowsComponents.forEach((row) => row.destroy());
 	    });
 	    const actions = Actions.create(componentActions, { api, state });
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    return (templateProps) => wrapper(html `
         <div class=${className} style=${styleMap} data-actions=${actions}>
-          ${rowsComponents.map((r) => r.html())}
+          ${slots.html('before', templateProps)}${rowsComponents.map((r) => r.html())}${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -8611,10 +8672,13 @@
 	        className = api.getClass(componentName);
 	        update();
 	    }));
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    onChange(function onPropsChange(changedProps, options) {
 	        if (options.leave || changedProps.row === undefined) {
 	            shouldDetach = true;
 	            reuseComponents(itemComponents, [], (item) => null, ItemComponent, false);
+	            slots.change(changedProps, options);
 	            return update();
 	        }
 	        props = changedProps;
@@ -8628,6 +8692,7 @@
 	            classNameCurrent = className;
 	        }
 	        updateRow(props.row);
+	        slots.change(changedProps, options);
 	    });
 	    onDestroy(() => {
 	        itemsSub();
@@ -8639,7 +8704,7 @@
 	    const actions = Actions.create(componentActions, actionProps);
 	    return (templateProps) => wrapper(html `
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
-          ${itemComponents.map((i) => i.html())}
+          ${slots.html('before', templateProps)}${itemComponents.map((i) => i.html())}${slots.html('after', templateProps)}
         </div>
       `, { props, vido, templateProps });
 	}
@@ -8783,6 +8848,8 @@
       </svg>`}
     </div>
   `;
+	    const slots = api.generateSlots(componentName, vido, props);
+	    onDestroy(slots.destroy);
 	    onChange(function onPropsChange(changedProps, options) {
 	        if (options.leave || changedProps.row === undefined || changedProps.item === undefined) {
 	            leave = true;
@@ -8790,6 +8857,7 @@
 	            props.item.$data.detached = shouldDetach;
 	            //if (props.item) state.update(`config.chart.items.${props.item.id}.$data.detached`, true);
 	            //props = changedProps;
+	            slots.change(changedProps, options);
 	            return update();
 	        }
 	        else {
@@ -8802,6 +8870,7 @@
 	        actionProps.item = props.item;
 	        actionProps.row = props.row;
 	        updateItem();
+	        slots.change(changedProps, options);
 	    });
 	    const componentActions = api.getActions(componentName);
 	    let className, labelClassName;
@@ -8816,11 +8885,11 @@
 	    const detach = new Detach(() => shouldDetach);
 	    return (templateProps) => wrapper(html `
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
-          ${cutterLeft()}
+          ${cutterLeft()}${slots.html('before', templateProps)}
           <div class=${labelClassName} title=${props.item.isHTML ? null : props.item.label}>
-            ${props.item.isHTML ? unsafeHTML(props.item.label) : props.item.label}
+            ${slots.html('inside', templateProps)}${props.item.isHTML ? unsafeHTML(props.item.label) : props.item.label}
           </div>
-          ${cutterRight()}
+          ${slots.html('after', templateProps)}${cutterRight()}
         </div>
       `, { vido, props, templateProps });
 	}
@@ -8864,14 +8933,12 @@
 	function generateEmptySlots() {
 	    const slots = {};
 	    actionNames.forEach((name) => {
-	        slots[name] = { before: [], after: [] };
+	        slots[name] = { before: [], inside: [], after: [] };
 	    });
 	    return slots;
 	}
 	// default configuration
 	function defaultConfig() {
-	    const actions = generateEmptyActions();
-	    const slots = generateEmptySlots();
 	    return {
 	        plugins: [],
 	        plugin: {},
@@ -8961,6 +9028,7 @@
 	                return input;
 	            },
 	        },
+	        slots: generateEmptySlots(),
 	        list: {
 	            rows: {},
 	            row: {
@@ -9230,9 +9298,8 @@
 	            items: {},
 	            spacing: 1,
 	        },
-	        slots,
 	        classNames: {},
-	        actions,
+	        actions: generateEmptyActions(),
 	        locale: {
 	            name: 'en',
 	            weekdays: 'Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday'.split('_'),
@@ -10836,6 +10903,158 @@
 	    }
 	}
 
+	function generateSlots(name, vido, props) {
+	    let slots = {
+	        before: [],
+	        inside: [],
+	        after: [],
+	    };
+	    for (const slotPlacement in slots) {
+	        vido.onDestroy(vido.state.subscribe(`config.slots.${name}.${slotPlacement}`, (slotsComponents) => {
+	            for (const instance of slots[slotPlacement]) {
+	                instance.destroy();
+	            }
+	            slots[slotPlacement].length = 0;
+	            for (const component of slotsComponents) {
+	                slots[slotPlacement].push(vido.createComponent(component, props));
+	            }
+	        }));
+	    }
+	    return {
+	        destroy() {
+	            for (const slotPlacement in slots) {
+	                for (const instance of slots[slotPlacement]) {
+	                    instance.destroy();
+	                }
+	                slots[slotPlacement].length = 0;
+	            }
+	        },
+	        change(changedProps, options = undefined) {
+	            for (const slotPlacement in slots) {
+	                const instances = slots[slotPlacement];
+	                for (const slot of instances) {
+	                    slot.change(changedProps, options);
+	                }
+	            }
+	        },
+	        get(placement) {
+	            return slots[placement];
+	        },
+	        html(placement, templateProps) {
+	            return slots[placement].map((instance) => instance.html(templateProps));
+	        },
+	    };
+	}
+
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */
+	const e=e=>(...t)=>{const n=e(...t);return n.isDirective=!0,n};class t{constructor(){this.isDirective=!0,this.isClass=!0;}body(e){}}const n=e=>null!=e&&"boolean"==typeof e.isDirective,s="undefined"!=typeof window&&(null!=window.customElements&&void 0!==window.customElements.polyfillWrapFlushCallback),o=(e,t,n=null,s=null)=>{for(;t!==n;){const n=t.nextSibling;e.insertBefore(t,s),t=n;}},i=(e,t,n=null)=>{for(;t!==n;){const n=t.nextSibling;e.removeChild(t),t=n;}},r={},a={},l=`{{lit-${String(Math.random()).slice(2)}}}`,c=`\x3c!--${l}--\x3e`,h=new RegExp(`${l}|${c}`);
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */class d{constructor(e,t){this.parts=[],this.element=t;const n=[],s=[],o=document.createTreeWalker(t.content,133,null,!1);let i=0,r=-1,a=0;const{strings:c,values:{length:d}}=e;for(;a<d;){const e=o.nextNode();if(null!==e){if(r++,1===e.nodeType){if(e.hasAttributes()){const t=e.attributes,{length:n}=t;let s=0;for(let e=0;e<n;e++)p(t[e].name,"$lit$")&&s++;for(;s-- >0;){const t=c[a],n=g.exec(t)[2],s=n.toLowerCase()+"$lit$",o=e.getAttribute(s);e.removeAttribute(s);const i=o.split(h);this.parts.push({type:"attribute",index:r,name:n,strings:i,sanitizer:void 0}),a+=i.length-1;}}"TEMPLATE"===e.tagName&&(s.push(e),o.currentNode=e.content);}else if(3===e.nodeType){const t=e.data;if(t.indexOf(l)>=0){const s=e.parentNode,o=t.split(h),i=o.length-1;for(let t=0;t<i;t++){let n,i=o[t];if(""===i)n=v();else {const e=g.exec(i);null!==e&&p(e[2],"$lit$")&&(i=i.slice(0,e.index)+e[1]+e[2].slice(0,-"$lit$".length)+e[3]),n=document.createTextNode(i);}s.insertBefore(n,e),this.parts.push({type:"node",index:++r});}""===o[i]?(s.insertBefore(v(),e),n.push(e)):e.data=o[i],a+=i;}}else if(8===e.nodeType)if(e.data===l){const t=e.parentNode;null!==e.previousSibling&&r!==i||(r++,t.insertBefore(v(),e)),i=r,this.parts.push({type:"node",index:r}),null===e.nextSibling?e.data="":(n.push(e),r--),a++;}else {let t=-1;for(;-1!==(t=e.data.indexOf(l,t+1));)this.parts.push({type:"node",index:-1}),a++;}}else o.currentNode=s.pop();}for(const e of n)e.parentNode.removeChild(e);}}const p=(e,t)=>{const n=e.length-t.length;return n>=0&&e.slice(n)===t},u=e=>-1!==e.index,m=document.createComment(""),v=()=>m.cloneNode(),g=/([ \x09\x0a\x0c\x0d])([^\0-\x1F\x7F-\x9F "'>=/]+)([ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d]*(?:[^ \x09\x0a\x0c\x0d"'`<>=]*|"[^"]*|'[^']*))$/;
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */
+	class f{constructor(e,t,n){this.__parts=[],this.template=e,this.processor=t,this.options=n;}update(e){let t=0;for(const n of this.__parts)void 0!==n&&n.setValue(e[t]),t++;for(const e of this.__parts)void 0!==e&&e.commit();}_clone(){const e=s?this.template.element.content.cloneNode(!0):document.importNode(this.template.element.content,!0),t=[],n=this.template.parts,o=document.createTreeWalker(e,133,null,!1);let i,r=0,a=0,l=o.nextNode();for(;r<n.length;)if(i=n[r],u(i)){for(;a<i.index;)a++,"TEMPLATE"===l.nodeName&&(t.push(l),o.currentNode=l.content),null===(l=o.nextNode())&&(o.currentNode=t.pop(),l=o.nextNode());if("node"===i.type){const e=this.processor.handleTextExpression(this.options,i);e.insertAfterNode(l.previousSibling),this.__parts.push(e);}else this.__parts.push(...this.processor.handleAttributeExpressions(l,i.name,i.strings,this.options,i));r++;}else this.__parts.push(void 0),r++;return s&&(document.adoptNode(e),customElements.upgrade(e)),e}}
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */let y;const x=` ${l} `,b=document.createElement("template");class _{constructor(e,t,n,s){this.strings=e,this.values=t,this.type=n,this.processor=s;}getHTML(){const e=this.strings.length-1;let t="",n=!1;for(let s=0;s<e;s++){const e=this.strings[s],o=e.lastIndexOf("\x3c!--");n=(o>-1||n)&&-1===e.indexOf("--\x3e",o+1);const i=g.exec(e);t+=null===i?e+(n?x:c):e.substr(0,i.index)+i[1]+i[2]+"$lit$"+i[3]+l;}return t+=this.strings[e],t}getTemplateElement(){const e=b.cloneNode();return e.innerHTML=function(e){const t=window,n=t.trustedTypes||t.TrustedTypes;return n&&!y&&(y=n.createPolicy("lit-html",{createHTML:e=>e})),y?y.createHTML(e):e}(this.getHTML()),e}}class w extends _{getHTML(){return `<svg>${super.getHTML()}</svg>`}getTemplateElement(){const e=super.getTemplateElement(),t=e.content,n=t.firstChild;return t.removeChild(n),o(t,n.firstChild),e}}
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */const N=e=>null===e||!("object"==typeof e||"function"==typeof e),P=e=>Array.isArray(e)||!(!e||!e[Symbol.iterator]),E=e=>e,A=(e,t,n)=>E;let M=A;const S=document.createTextNode("");class T{constructor(e,t,n,s,o="attribute"){this.dirty=!0,this.element=e,this.name=t,this.strings=n,this.parts=[];let i=s&&s.sanitizer;void 0===i&&(i=M(e,t,o),void 0!==s&&(s.sanitizer=i)),this.sanitizer=i;for(let e=0;e<n.length-1;e++)this.parts[e]=this._createPart();}_createPart(){return new Y(this)}_getValue(){const e=this.strings,t=this.parts,n=e.length-1;if(1===n&&""===e[0]&&""===e[1]&&void 0!==t[0]){const e=t[0].value;if(!P(e))return e}let s="";for(let o=0;o<n;o++){s+=e[o];const n=t[o];if(void 0!==n){const e=n.value;if(N(e)||!P(e))s+="string"==typeof e?e:String(e);else for(const t of e)s+="string"==typeof t?t:String(t);}}return s+=e[n],s}commit(){if(this.dirty){this.dirty=!1;let e=this._getValue();e=this.sanitizer(e),"symbol"==typeof e&&(e=String(e)),this.element.setAttribute(this.name,e);}}}class Y{constructor(e){this.value=void 0,this.committer=e;}setValue(e){e===r||N(e)&&e===this.value||(this.value=e,n(e)||(this.committer.dirty=!0));}commit(){for(;n(this.value);){const e=this.value;this.value=r,e.isClass?e.body(this):e(this);}this.value!==r&&this.committer.commit();}}class X{constructor(e,t){this.value=void 0,this.__pendingValue=void 0,this.textSanitizer=void 0,this.options=e,this.templatePart=t;}appendInto(e){this.startNode=e.appendChild(v()),this.endNode=e.appendChild(v());}insertAfterNode(e){this.startNode=e,this.endNode=e.nextSibling;}appendIntoPart(e){e.__insert(this.startNode=v()),e.__insert(this.endNode=v());}insertAfterPart(e){e.__insert(this.startNode=v()),this.endNode=e.endNode,e.endNode=this.startNode;}setValue(e){this.__pendingValue=e;}commit(){for(;n(this.__pendingValue);){const e=this.__pendingValue;this.__pendingValue=r,e.isClass?e.body(this):e(this);}const e=this.__pendingValue;e!==r&&(N(e)?e!==this.value&&this.__commitText(e):e instanceof _?this.__commitTemplateResult(e):e instanceof Node?this.__commitNode(e):P(e)?this.__commitIterable(e):e===a?(this.value=a,this.clear()):this.__commitText(e));}__insert(e){this.endNode.parentNode.insertBefore(e,this.endNode);}__commitNode(e){this.value!==e&&(this.clear(),this.__insert(e),this.value=e);}__commitText(e){const t=this.startNode.nextSibling;if(e=null==e?"":e,t===this.endNode.previousSibling&&3===t.nodeType){void 0===this.textSanitizer&&(this.textSanitizer=M(t,"data","property"));const n=this.textSanitizer(e);t.data="string"==typeof n?n:String(n);}else {const t=S.cloneNode();this.__commitNode(t),void 0===this.textSanitizer&&(this.textSanitizer=M(t,"data","property"));const n=this.textSanitizer(e);t.data="string"==typeof n?n:String(n);}this.value=e;}__commitTemplateResult(e){const t=this.options.templateFactory(e);if(this.value instanceof f&&this.value.template===t)this.value.update(e.values);else {const n=this.endNode.parentNode;if(M!==A&&"STYLE"===n.nodeName||"SCRIPT"===n.nodeName)return void this.__commitText("/* lit-html will not write TemplateResults to scripts and styles */");const s=new f(t,e.processor,this.options),o=s._clone();s.update(e.values),this.__commitNode(o),this.value=s;}}__commitIterable(e){Array.isArray(this.value)||(this.value=[],this.clear());const t=this.value;let n,s=0;for(const o of e)n=t[s],void 0===n&&(n=new X(this.options,this.templatePart),t.push(n),0===s?n.appendIntoPart(this):n.insertAfterPart(t[s-1])),n.setValue(o),n.commit(),s++;s<t.length&&(t.length=s,this.clear(n&&n.endNode));}clear(e=this.startNode){i(this.startNode.parentNode,e.nextSibling,this.endNode);}}class I{constructor(e,t,n){if(this.value=void 0,this.__pendingValue=void 0,2!==n.length||""!==n[0]||""!==n[1])throw new Error("Boolean attributes can only contain a single expression");this.element=e,this.name=t,this.strings=n;}setValue(e){this.__pendingValue=e;}commit(){for(;n(this.__pendingValue);){const e=this.__pendingValue;this.__pendingValue=r,e.isClass?e.body(this):e(this);}if(this.__pendingValue===r)return;const e=!!this.__pendingValue;this.value!==e&&(e?this.element.setAttribute(this.name,""):this.element.removeAttribute(this.name),this.value=e),this.__pendingValue=r;}}class C extends T{constructor(e,t,n,s){super(e,t,n,s,"property"),this.single=2===n.length&&""===n[0]&&""===n[1];}_createPart(){return new V(this)}_getValue(){return this.single?this.parts[0].value:super._getValue()}commit(){if(this.dirty){this.dirty=!1;let e=this._getValue();e=this.sanitizer(e),this.element[this.name]=e;}}}class V extends Y{}let L=!1;(()=>{try{const e={get capture(){return L=!0,!1}};window.addEventListener("test",e,e),window.removeEventListener("test",e,e);}catch(e){}})();class k{constructor(e,t,n){this.value=void 0,this.__pendingValue=void 0,this.element=e,this.eventName=t,this.eventContext=n,this.__boundHandleEvent=e=>this.handleEvent(e);}setValue(e){this.__pendingValue=e;}commit(){for(;n(this.__pendingValue);){const e=this.__pendingValue;this.__pendingValue=r,e.isClass?e.body(this):e(this);}if(this.__pendingValue===r)return;const e=this.__pendingValue,t=this.value,s=null==e||null!=t&&(e.capture!==t.capture||e.once!==t.once||e.passive!==t.passive),o=null!=e&&(null==t||s);s&&this.element.removeEventListener(this.eventName,this.__boundHandleEvent,this.__options),o&&(this.__options=D(e),this.element.addEventListener(this.eventName,this.__boundHandleEvent,this.__options)),this.value=e,this.__pendingValue=r;}handleEvent(e){"function"==typeof this.value?this.value.call(this.eventContext||this.element,e):this.value.handleEvent(e);}}const D=e=>e&&(L?{capture:e.capture,passive:e.passive,once:e.once}:e.capture)
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */;class ${handleAttributeExpressions(e,t,n,s,o){const i=t[0];if("."===i){return new C(e,t.slice(1),n,o).parts}return "@"===i?[new k(e,t.slice(1),s.eventContext)]:"?"===i?[new I(e,t.slice(1),n)]:new T(e,t,n,o).parts}handleTextExpression(e,t){return new X(e,t)}}const z=new $;
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */function R(e){let t=F.get(e.type);void 0===t&&(t={stringsArray:new WeakMap,keyString:new Map},F.set(e.type,t));let n=t.stringsArray.get(e.strings);if(void 0!==n)return n;const s=e.strings.join(l);return n=t.keyString.get(s),void 0===n&&(n=new d(e,e.getTemplateElement()),t.keyString.set(s,n)),t.stringsArray.set(e.strings,n),n}const F=new Map,B=new WeakMap,W=(e,t,n)=>{let s=B.get(t);void 0===s&&(i(t,t.firstChild),B.set(t,s=new X(Object.assign({templateFactory:R},n),void 0)),s.appendInto(t)),s.setValue(e),s.commit();};
+	/**
+	 * @license
+	 * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+	 * This code may only be used under the BSD style license found at
+	 * http://polymer.github.io/LICENSE.txt
+	 * The complete set of authors may be found at
+	 * http://polymer.github.io/AUTHORS.txt
+	 * The complete set of contributors may be found at
+	 * http://polymer.github.io/CONTRIBUTORS.txt
+	 * Code distributed by Google as part of the polymer project is also
+	 * subject to an additional IP rights grant found at
+	 * http://polymer.github.io/PATENTS.txt
+	 */"undefined"!=typeof window&&(window.litHtmlVersions||(window.litHtmlVersions=[])).push("1.1.7");const U=(e,...t)=>new _(e,t,"html",z),O=(e,...t)=>new w(e,t,"svg",z);var H=Object.freeze({__proto__:null,html:U,svg:O,DefaultTemplateProcessor:$,defaultTemplateProcessor:z,directive:e,Directive:t,isDirective:n,removeNodes:i,reparentNodes:o,noChange:r,nothing:a,AttributeCommitter:T,AttributePart:Y,BooleanAttributePart:I,EventPart:k,isIterable:P,isPrimitive:N,NodePart:X,PropertyCommitter:C,PropertyPart:V,get sanitizerFactory(){return M},setSanitizerFactory:e=>{if(M!==A)throw new Error("Attempted to overwrite existing lit-html security policy. setSanitizeDOMValueFactory should be called at most once.");M=e;},parts:B,render:W,templateCaches:F,templateFactory:R,TemplateInstance:f,SVGTemplateResult:w,TemplateResult:_,createMarker:v,isTemplatePartActive:u,Template:d});
+	const ue=document.createElement("template");
+	class be{constructor(){this.isAction=!0;}}be.prototype.isAction=!0;const _e={element:document.createTextNode(""),axis:"xy",threshold:10,onDown(e){},onMove(e){},onUp(e){},onWheel(e){}};
+
 	/**
 	 * Api functions
 	 *
@@ -10901,6 +11120,7 @@
 	    stateFromConfig,
 	    wasmStateFromConfig,
 	    merge: mergeDeep$1,
+	    lithtml: H,
 	    date(time) {
 	        return time ? dayjs_min(time) : dayjs_min();
 	    },
@@ -10916,6 +11136,7 @@
 	        this.debug = false;
 	        this.iconsCache = {};
 	        this.unsubscribes = [];
+	        this.generateSlots = generateSlots;
 	        this.mergeDeep = mergeDeep$1;
 	        this.getClass = getClass;
 	        this.allActions = [];

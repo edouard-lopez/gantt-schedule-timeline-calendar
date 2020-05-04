@@ -49,7 +49,7 @@ interface Props {
 }
 
 function ChartTimelineGridRowCell(vido: Vido, props: Props) {
-  const { api, state, onDestroy, Detach, Actions, update, html, onChange, StyleMap } = vido;
+  const { api, state, onDestroy, Detach, Actions, update, html, onChange, StyleMap, createComponent } = vido;
   const componentName = 'chart-timeline-grid-row-cell';
   const actionProps = {
     ...props,
@@ -69,6 +69,9 @@ function ChartTimelineGridRowCell(vido: Vido, props: Props) {
     })
   );
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   let className;
   function updateClassName(time) {
     className = api.getClass(componentName);
@@ -78,13 +81,11 @@ function ChartTimelineGridRowCell(vido: Vido, props: Props) {
   }
   updateClassName(props.time);
   const styleMap = new StyleMap({ width: '', height: '' });
-  /**
-   * On props change
-   * @param {any} changedProps
-   */
+
   function onPropsChange(changedProps: Props, options) {
     if (options.leave || changedProps.row === undefined) {
       shouldDetach = true;
+      slots.change(changedProps, options);
       return update();
     }
     shouldDetach = false;
@@ -104,18 +105,27 @@ function ChartTimelineGridRowCell(vido: Vido, props: Props) {
     }
     const currentStyle = props?.row?.style?.grid?.cell?.current;
     if (currentStyle) styleMap.setStyle({ ...styleMap.style, ...currentStyle });
+    slots.change(props, options);
     update();
   }
   onChange(onPropsChange);
 
   componentActions.push(BindElementAction);
   const actions = Actions.create(componentActions, actionProps);
+
   return (templateProps) => {
-    return wrapper(html` <div detach=${detach} class=${className} data-actions=${actions} style=${styleMap}></div> `, {
-      props,
-      vido,
-      templateProps,
-    });
+    return wrapper(
+      html`${slots.html('before', templateProps)}
+        <div detach=${detach} class=${className} data-actions=${actions} style=${styleMap}>
+          ${slots.html('inside', templateProps)}
+        </div>
+        ${slots.html('after', templateProps)}`,
+      {
+        props,
+        vido,
+        templateProps,
+      }
+    );
   };
 }
 export default ChartTimelineGridRowCell;

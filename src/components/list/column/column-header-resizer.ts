@@ -38,6 +38,9 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
     })
   );
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   function updateData() {
     if (!props.column) return;
     const list = state.get('config.list');
@@ -45,6 +48,7 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
     dotsStyleMap.style['--width'] = list.columns.resizer.width + 'px';
     inRealTime = list.columns.resizer.inRealTime;
     state.update('$data.list.width', calculatedWidth);
+    slots.change(props);
     update();
   }
 
@@ -108,12 +112,15 @@ export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
     wrapper(
       html`
         <div class=${className} data-actions=${actions}>
+          ${slots.html('before', templateProps)}
           <div class=${containerClass}>
             ${cache(props.column.header.html ? unsafeHTML(props.column.header.html) : props.column.header.content)}
           </div>
+          ${slots.html('inside', templateProps)}
           <div class=${dotsClass} style=${dotsStyleMap} data-actions=${dotsActions}>
             ${dots.map((dot) => html` <div class=${dotClass} /> `)}
           </div>
+          ${slots.html('after', templateProps)}
         </div>
       `,
       { vido, props, templateProps }

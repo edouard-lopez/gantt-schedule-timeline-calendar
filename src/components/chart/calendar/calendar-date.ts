@@ -91,11 +91,15 @@ export default function ChartCalendarDay(vido: Vido, props: Props) {
   let shouldDetach = false;
   const detach = new Detach(() => shouldDetach);
 
+  const slots = api.generateSlots(componentName, vido, props);
+  onDestroy(slots.destroy);
+
   let timeSub;
   const actionProps = { date: props.date, period: props.period, api, state };
   onChange((changedProps, options) => {
     if (options.leave) {
       shouldDetach = true;
+      slots.change(changedProps, options);
       return update();
     }
     shouldDetach = false;
@@ -108,6 +112,7 @@ export default function ChartCalendarDay(vido: Vido, props: Props) {
     timeSub = state.subscribeAll(['$data.chart.time', 'config.chart.calendar.levels'], updateDate, {
       bulk: true,
     });
+    slots.change(changedProps, options);
   });
 
   onDestroy(() => {
@@ -134,7 +139,7 @@ export default function ChartCalendarDay(vido: Vido, props: Props) {
           style=${styleMap}
           data-actions=${actions}
         >
-          ${htmlFormatted}
+          ${slots.html('before', templateProps)}${htmlFormatted}${slots.html('after', templateProps)}
         </div>
       `,
       { props, vido, templateProps }
