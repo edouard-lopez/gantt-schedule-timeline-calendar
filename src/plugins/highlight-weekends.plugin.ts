@@ -8,7 +8,7 @@
  * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
  */
 
-import { Action, vido } from '@neuronet.io/vido/vido';
+import Action from '@neuronet.io/vido/Action';
 import { Api } from '../api/api';
 import { Vido } from '../gstc';
 

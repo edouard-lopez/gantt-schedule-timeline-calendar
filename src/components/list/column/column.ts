@@ -9,7 +9,6 @@
  */
 
 import { Vido, Row, ColumnData } from '../../../gstc';
-import { mergeDeep } from '@neuronet.io/vido/helpers';
 
 /**
  * Bind element action

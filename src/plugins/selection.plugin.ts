@@ -21,7 +21,7 @@ import {
 import { Item, Cell, Items, Vido, htmlResult, Wrapper, ItemData } from '../gstc';
 import DeepState from 'deep-state-observer';
 import { Api } from '../api/api';
-import { StyleMap, lithtml } from '@neuronet.io/vido/vido';
+import { StyleMap, lithtml } from '@neuronet.io/vido/vido.d';
 
 export type ModKey = 'shift' | 'ctrl' | 'alt' | '';
 

@@ -7349,7 +7349,7 @@
 	 * @link      https://github.com/neuronetio/gantt-schedule-timeline-calendar
 	 */
 	function ListColumnHeaderResizer(vido, props) {
-	    const { api, state, onDestroy, update, html, Actions, onChange, PointerAction, cache, StyleMap } = vido;
+	    const { api, state, onDestroy, update, html, Actions, onChange, PointerAction, cache, StyleMap, unsafeHTML } = vido;
 	    const componentName = 'list-column-header-resizer';
 	    const componentActions = api.getActions(componentName);
 	    const componentDotsActions = api.getActions(componentName + '-dots');

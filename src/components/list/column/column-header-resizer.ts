@@ -9,14 +9,13 @@
  */
 
 import { Vido, ColumnData } from '../../../gstc';
-import { unsafeHTML } from '@neuronet.io/vido/vido';
 
 export interface Props {
   column: ColumnData;
 }
 
 export default function ListColumnHeaderResizer(vido: Vido, props: Props) {
-  const { api, state, onDestroy, update, html, Actions, onChange, PointerAction, cache, StyleMap } = vido;
+  const { api, state, onDestroy, update, html, Actions, onChange, PointerAction, cache, StyleMap, unsafeHTML } = vido;
 
   const componentName = 'list-column-header-resizer';
   const componentActions = api.getActions(componentName);
