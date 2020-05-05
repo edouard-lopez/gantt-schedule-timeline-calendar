@@ -154,20 +154,22 @@
   }
   function Plugin(options) {
       return function initialize(vidoInstance) {
+          const subs = [];
+          subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
           const defaultData = generateEmptyData(options);
           // for other plugins that are initialized before elements are saved
           vidoInstance.state.update(pluginPath, defaultData);
           let timelinePointerDestroy;
-          const unsub = vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement) => {
+          subs.push(vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement) => {
               if (timelineElement) {
                   if (timelinePointerDestroy)
                       timelinePointerDestroy();
                   const timelinePointer = new TimelinePointer(options, vidoInstance);
                   timelinePointerDestroy = timelinePointer.destroy;
               }
-          });
+          }));
           return function destroy() {
-              unsub();
+              subs.forEach((unsub) => unsub());
               if (timelinePointerDestroy)
                   timelinePointerDestroy();
           };
@@ -626,9 +628,14 @@
   }
   function Plugin$1(options = {}) {
       return function initialize(vidoInstance) {
+          const subs = [];
+          subs.push(vidoInstance.state.subscribe(pluginPath$1, (value) => (options = value)));
           vidoInstance.state.update(pluginPath$1, generateEmptyPluginData(prepareOptions(options)));
           const itemMovement = new ItemMovement(vidoInstance);
-          return itemMovement.destroy;
+          return function destroy() {
+              subs.forEach((unsub) => unsub());
+              itemMovement.destroy();
+          };
       };
   }
 
@@ -1762,6 +1769,7 @@
           result.handle = Object.assign(Object.assign({}, handle), options.handle);
       return result;
   }
+  const pluginPath$2 = 'config.plugin.ItemResizing';
   class ItemResizing {
       constructor(vido, options) {
           this.spacing = 1;
@@ -2050,8 +2058,13 @@
   }
   function Plugin$2(options = {}) {
       return function initialize(vidoInstance) {
+          const subs = [];
+          subs.push(vidoInstance.state.subscribe(pluginPath$2, (value) => (options = value)));
           const itemResizing = new ItemResizing(vidoInstance, options);
-          return itemResizing.destroy;
+          return function destroy() {
+              subs.forEach((unsub) => unsub());
+              itemResizing.destroy();
+          };
       };
   }
 
@@ -2088,7 +2101,7 @@
       options = Object.assign(Object.assign({}, defaultOptions), options);
       return options;
   }
-  const pluginPath$2 = 'config.plugin.Selection';
+  const pluginPath$3 = 'config.plugin.Selection';
   function generateEmptyData$2(options) {
       return Object.assign({ enabled: true, showOverlay: true, isSelecting: false, pointerState: 'up', selectKey: '', multiKey: 'shift', multipleSelection: true, targetType: '', targetData: null, initialPosition: { x: 0, y: 0 }, currentPosition: { x: 0, y: 0 }, selectionAreaLocal: { x: 0, y: 0, width: 0, height: 0 }, selectionAreaGlobal: { x: 0, y: 0, width: 0, height: 0 }, selecting: {
               [ITEM]: [],
@@ -2112,7 +2125,7 @@
           this.state = vido.state;
           this.api = vido.api;
           this.merge = this.state.get('config.merge');
-          this.state.update(pluginPath$2, generateEmptyData$2(options));
+          this.state.update(pluginPath$3, generateEmptyData$2(options));
           this.data = generateEmptyData$2(options);
           this.wrapperClassName = this.api.getClass('chart-selection');
           this.wrapperStyleMap = new vido.StyleMap({ display: 'none' });
@@ -2125,7 +2138,7 @@
               this.onPointerData();
           }));
           this.updateData();
-          this.onDestroy.push(this.state.subscribe(pluginPath$2, (value) => {
+          this.onDestroy.push(this.state.subscribe(pluginPath$3, (value) => {
               this.data = value;
           }));
           // watch and update items that are inside selection
@@ -2147,7 +2160,7 @@
           this.onDestroy.forEach((unsub) => unsub());
       }
       updateData() {
-          this.state.update(pluginPath$2, Object.assign({}, this.data));
+          this.state.update(pluginPath$3, Object.assign({}, this.data));
           this.vido.update(); // draw selection area overlay
       }
       modKeyPressed(modKey, ev) {
@@ -2408,8 +2421,13 @@
   function Plugin$3(options = {}) {
       options = prepareOptions$1(options);
       return function initialize(vidoInstance) {
+          const subs = [];
+          subs.push(vidoInstance.state.subscribe(pluginPath$3, (value) => (options = value)));
           const selectionPlugin = new SelectionPlugin(vidoInstance, options);
-          return selectionPlugin.destroy;
+          return function destroy() {
+              subs.forEach((unsub) => unsub());
+              selectionPlugin.destroy();
+          };
       };
   }
 
@@ -2523,6 +2541,10 @@
           vido = vidoInstance;
           api = vido.api;
           state = vido.state;
+          const currentOptions = state.get('config.plugin.CalendarScroll');
+          if (currentOptions) {
+              options = Object.assign(Object.assign({}, options), currentOptions);
+          }
           state.update('config.plugin.CalendarScroll', options);
           state.subscribe('config.plugin.CalendarScroll.enabled', (value) => (enabled = value));
           state.update('config.actions.chart-calendar', (chartActions) => {
@@ -2577,15 +2599,18 @@
           }
       }
       return function initialize(vidoInstance) {
+          const subs = [];
+          const pluginPath = 'config.plugin.HighlightWeekends';
           api = vidoInstance.api;
           className = options.className || api.getClass('chart-timeline-grid-row-cell') + '--weekend';
-          const destroy = vidoInstance.state.subscribe('$data.chart.time.format.period', (period) => (enabled = period === 'day'));
+          subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
+          subs.push(vidoInstance.state.subscribe('$data.chart.time.format.period', (period) => (enabled = period === 'day')));
           vidoInstance.state.update('config.actions.chart-timeline-grid-row-cell', (actions) => {
               actions.push(WeekendHighlightAction);
               return actions;
           });
           return function onDestroy() {
-              destroy();
+              subs.forEach((unsub) => unsub());
           };
       };
   }

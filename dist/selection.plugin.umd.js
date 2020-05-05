@@ -364,8 +364,13 @@
   function Plugin(options = {}) {
       options = prepareOptions(options);
       return function initialize(vidoInstance) {
+          const subs = [];
+          subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
           const selectionPlugin = new SelectionPlugin(vidoInstance, options);
-          return selectionPlugin.destroy;
+          return function destroy() {
+              subs.forEach((unsub) => unsub());
+              selectionPlugin.destroy();
+          };
       };
   }
 

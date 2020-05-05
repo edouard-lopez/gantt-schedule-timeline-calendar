@@ -454,8 +454,13 @@ class ItemMovement {
 
 export function Plugin(options: Options = {}) {
   return function initialize(vidoInstance: Vido) {
+    const subs = [];
+    subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
     vidoInstance.state.update(pluginPath, generateEmptyPluginData(prepareOptions(options)));
     const itemMovement = new ItemMovement(vidoInstance);
-    return itemMovement.destroy;
+    return function destroy() {
+      subs.forEach((unsub) => unsub());
+      itemMovement.destroy();
+    };
   };
 }

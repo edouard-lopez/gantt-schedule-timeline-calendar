@@ -151,6 +151,8 @@ function generateEmptyData(options: Options = {}): PluginData {
   return result;
 }
 
+const pluginPath = 'config.plugin.ItemResizing';
+
 class ItemResizing {
   private vido: Vido;
   private state: DeepState;
@@ -464,7 +466,12 @@ class ItemResizing {
 
 export function Plugin(options: Options = {}) {
   return function initialize(vidoInstance: Vido) {
+    const subs = [];
+    subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
     const itemResizing = new ItemResizing(vidoInstance, options);
-    return itemResizing.destroy;
+    return function destroy() {
+      subs.forEach((unsub) => unsub());
+      itemResizing.destroy();
+    };
   };
 }

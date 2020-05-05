@@ -45,15 +45,18 @@ function Plugin(options = {}) {
         }
     }
     return function initialize(vidoInstance) {
+        const subs = [];
+        const pluginPath = 'config.plugin.HighlightWeekends';
         api = vidoInstance.api;
         className = options.className || api.getClass('chart-timeline-grid-row-cell') + '--weekend';
-        const destroy = vidoInstance.state.subscribe('$data.chart.time.format.period', (period) => (enabled = period === 'day'));
+        subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
+        subs.push(vidoInstance.state.subscribe('$data.chart.time.format.period', (period) => (enabled = period === 'day')));
         vidoInstance.state.update('config.actions.chart-timeline-grid-row-cell', (actions) => {
             actions.push(WeekendHighlightAction);
             return actions;
         });
         return function onDestroy() {
-            destroy();
+            subs.forEach((unsub) => unsub());
         };
     };
 }

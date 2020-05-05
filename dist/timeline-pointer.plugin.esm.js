@@ -148,20 +148,22 @@ class TimelinePointer {
 }
 function Plugin(options) {
     return function initialize(vidoInstance) {
+        const subs = [];
+        subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
         const defaultData = generateEmptyData(options);
         // for other plugins that are initialized before elements are saved
         vidoInstance.state.update(pluginPath, defaultData);
         let timelinePointerDestroy;
-        const unsub = vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement) => {
+        subs.push(vidoInstance.state.subscribe('$data.elements.chart-timeline', (timelineElement) => {
             if (timelineElement) {
                 if (timelinePointerDestroy)
                     timelinePointerDestroy();
                 const timelinePointer = new TimelinePointer(options, vidoInstance);
                 timelinePointerDestroy = timelinePointer.destroy;
             }
-        });
+        }));
         return function destroy() {
-            unsub();
+            subs.forEach((unsub) => unsub());
             if (timelinePointerDestroy)
                 timelinePointerDestroy();
         };
