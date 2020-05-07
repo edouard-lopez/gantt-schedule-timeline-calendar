@@ -7567,6 +7567,8 @@ function ListColumnRow(vido, props) {
             return null;
         if (typeof props.column.data === 'function')
             return unsafeHTML(props.column.data(props.row, vido));
+        if (typeof props.row[props.column.data] === 'function')
+            return unsafeHTML(props.row[props.column.data](props.row, vido));
         return unsafeHTML(props.row[props.column.data]);
     }
     function getText() {
@@ -7574,6 +7576,8 @@ function ListColumnRow(vido, props) {
             return null;
         if (typeof props.column.data === 'function')
             return props.column.data(props.row, vido);
+        if (typeof props.row[props.column.data] === 'function')
+            return props.row[props.column.data](props.row, vido);
         return props.row[props.column.data];
     }
     if (!componentActions.includes(BindElementAction$1))
