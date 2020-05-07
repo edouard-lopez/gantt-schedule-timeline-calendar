@@ -98,7 +98,7 @@ export interface ItemData {
   detached: boolean;
 }
 
-export type ItemLabelFunction = (item: Item, vido: Vido) => lithtml.TemplateResult | string;
+export type ItemLabelFunction = ({ item: Item, vido: Vido }) => lithtml.TemplateResult | string;
 
 export interface Item {
   id: string;
@@ -196,9 +196,9 @@ export interface ColumnResizer {
   dots?: number;
 }
 
-export type ColumnDataFunctionString = (row: Row, vido: Vido) => string;
+export type ColumnDataFunctionString = ({ row: Row, vido: Vido }) => string;
 
-export type ColumnDataFunctionTemplate = (row: Row, vido: Vido) => htmlResult;
+export type ColumnDataFunctionTemplate = ({ row: Row, vido: Vido }) => htmlResult;
 
 export interface ColumnDataHeader {
   html?: htmlResult;

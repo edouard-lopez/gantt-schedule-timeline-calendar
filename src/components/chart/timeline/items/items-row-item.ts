@@ -192,13 +192,13 @@ export default function ChartTimelineItemsRowItem(vido: Vido, props: Props) {
 
   function getText() {
     if (!props.item || !props.item.label) return null;
-    if (typeof props.item.label === 'function') return props.item.label(props.item, vido);
+    if (typeof props.item.label === 'function') return props.item.label({ item: props.item, vido });
     return props.item.label;
   }
 
   function getHtml() {
     if (!props.item || !props.item.label) return null;
-    if (typeof props.item.label === 'function') return unsafeHTML(props.item.label(props.item, vido));
+    if (typeof props.item.label === 'function') return unsafeHTML(props.item.label({ item: props.item, vido }));
     return unsafeHTML(props.item.label);
   }
 

@@ -7566,18 +7566,18 @@ function ListColumnRow(vido, props) {
         if (props.row === undefined)
             return null;
         if (typeof props.column.data === 'function')
-            return unsafeHTML(props.column.data(props.row, vido));
+            return unsafeHTML(props.column.data({ row: props.row, vido }));
         if (typeof props.row[props.column.data] === 'function')
-            return unsafeHTML(props.row[props.column.data](props.row, vido));
+            return unsafeHTML(props.row[props.column.data]({ row: props.row, vido }));
         return unsafeHTML(props.row[props.column.data]);
     }
     function getText() {
         if (props.row === undefined)
             return null;
         if (typeof props.column.data === 'function')
-            return props.column.data(props.row, vido);
+            return props.column.data({ row: props.row, vido });
         if (typeof props.row[props.column.data] === 'function')
-            return props.row[props.column.data](props.row, vido);
+            return props.row[props.column.data]({ row: props.row, vido });
         return props.row[props.column.data];
     }
     if (!componentActions.includes(BindElementAction$1))
@@ -8885,14 +8885,14 @@ function ChartTimelineItemsRowItem(vido, props) {
         if (!props.item || !props.item.label)
             return null;
         if (typeof props.item.label === 'function')
-            return props.item.label(props.item, vido);
+            return props.item.label({ item: props.item, vido });
         return props.item.label;
     }
     function getHtml() {
         if (!props.item || !props.item.label)
             return null;
         if (typeof props.item.label === 'function')
-            return unsafeHTML(props.item.label(props.item, vido));
+            return unsafeHTML(props.item.label({ item: props.item, vido }));
         return unsafeHTML(props.item.label);
     }
     return (templateProps) => wrapper(html `

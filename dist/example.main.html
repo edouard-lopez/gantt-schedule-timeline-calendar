@@ -70,9 +70,10 @@
         const id = i.toString();
         rows[id] = {
           id,
-          label(row, vido) {
+          label({ row, vido }) {
             return vido.html`<div style="font-weight: bold; letter-spacing: 2px;">Room ${row.id}</div>`;
           },
+          // label: 'Room ' + id,
           progress: 50,
           parentId: withParent ? (i - 1).toString() : undefined,
           expanded: false,
@@ -91,7 +92,7 @@
           .add(Math.floor(Math.random() * 90), 'days');
         items[id] = {
           id,
-          label(item, vido) {
+          label({ item, vido }) {
             return vido.html`<div style="font-weight: bold; letter-spacing: 2px">${vido.api.time
               .date(item.time.start)
               .format('YYYY-MM-DD')}</div>`;
@@ -130,7 +131,6 @@
             .date(items[id].time.start)
             .add(Math.round(Math.random() * 23), 'hour')
             .valueOf();
-        //items[id].label = GSTC.api.date(items[id].time.start).format('YYYY-MM-DD HH:mm');
       }
       items['1'].linkedWith = ['3', '2'];
       items['1'].label = 'linked with 3 and 2';
@@ -155,9 +155,9 @@
           },
           label: {
             id: 'label',
-            /*data(row, vido) {
-              return vido.html`<div style="font-weight: bold;">${row.label}</div>`;
-            },*/
+            // data({ row, vido }) {
+            //   return vido.html`<div style="font-weight: bold;">${row.label}</div>`;
+            // },
             data: 'label',
             expander: true,
             isHTML: false,
