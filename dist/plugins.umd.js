@@ -2541,11 +2541,12 @@
           vido = vidoInstance;
           api = vido.api;
           state = vido.state;
-          const currentOptions = state.get('config.plugin.CalendarScroll');
+          const pluginPath = 'config.plugin.CalendarScroll';
+          const currentOptions = state.get(pluginPath);
           if (currentOptions) {
               options = Object.assign(Object.assign({}, options), currentOptions);
           }
-          state.update('config.plugin.CalendarScroll', options);
+          state.update(pluginPath, options);
           state.subscribe('config.plugin.CalendarScroll.enabled', (value) => (enabled = value));
           state.update('config.actions.chart-calendar', (chartActions) => {
               chartActions.push(ChartAction);

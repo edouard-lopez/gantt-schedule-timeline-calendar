@@ -166,13 +166,13 @@ export default function ListColumnRow(vido: Vido, props: Props) {
 
   function getHtml() {
     if (props.row === undefined) return null;
-    if (typeof props.column.data === 'function') return unsafeHTML(props.column.data(props.row));
+    if (typeof props.column.data === 'function') return unsafeHTML(props.column.data(props.row, vido));
     return unsafeHTML(props.row[props.column.data]);
   }
 
   function getText() {
     if (props.row === undefined) return null;
-    if (typeof props.column.data === 'function') return props.column.data(props.row);
+    if (typeof props.column.data === 'function') return props.column.data(props.row, vido);
     return props.row[props.column.data];
   }
 

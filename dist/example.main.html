@@ -89,7 +89,11 @@
           .add(Math.floor(Math.random() * 90), 'days');
         items[id] = {
           id,
-          label: 'item id ' + id,
+          label(item, vido) {
+            return vido.html`<div style="font-weight: bold; letter-spacing: 2px">${vido.api.time
+              .date(item.time.start)
+              .format('YYYY-MM-DD')}</div>`;
+          },
           time: {
             start: startDayjs.valueOf(),
             end: startDayjs
@@ -124,7 +128,7 @@
             .date(items[id].time.start)
             .add(Math.round(Math.random() * 23), 'hour')
             .valueOf();
-        items[id].label = GSTC.api.date(items[id].time.start).format('YYYY-MM-DD HH:mm');
+        //items[id].label = GSTC.api.date(items[id].time.start).format('YYYY-MM-DD HH:mm');
       }
       items['1'].linkedWith = ['3', '2'];
       items['1'].label = 'linked with 3 and 2';
@@ -149,7 +153,9 @@
           },
           label: {
             id: 'label',
-            data: 'label',
+            data(row, vido) {
+              return vido.html`<div style="font-weight: bold;">${row.label}</div>`;
+            },
             expander: true,
             isHTML: false,
             width: 230,

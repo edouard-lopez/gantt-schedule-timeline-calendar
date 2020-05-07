@@ -74,11 +74,12 @@ export interface ItemData {
     actualWidth: number;
     detached: boolean;
 }
+export declare type ItemLabelFunction = (item: Item, vido: Vido) => lithtml.TemplateResult | string;
 export interface Item {
     id: string;
     rowId: string;
     time: ItemTime;
-    label: string;
+    label: string | ItemLabelFunction;
     height?: number;
     top?: number;
     gap?: ItemGap;
@@ -131,8 +132,8 @@ export interface ColumnResizer {
     inRealTime?: boolean;
     dots?: number;
 }
-export declare type ColumnDataFunctionString = (row: Row) => string;
-export declare type ColumnDataFunctionTemplate = (row: Row) => htmlResult;
+export declare type ColumnDataFunctionString = (row: Row, vido: Vido) => string;
+export declare type ColumnDataFunctionTemplate = (row: Row, vido: Vido) => htmlResult;
 export interface ColumnDataHeader {
     html?: htmlResult;
     content?: string;

@@ -7572,14 +7572,14 @@
 	        if (props.row === undefined)
 	            return null;
 	        if (typeof props.column.data === 'function')
-	            return unsafeHTML(props.column.data(props.row));
+	            return unsafeHTML(props.column.data(props.row, vido));
 	        return unsafeHTML(props.row[props.column.data]);
 	    }
 	    function getText() {
 	        if (props.row === undefined)
 	            return null;
 	        if (typeof props.column.data === 'function')
-	            return props.column.data(props.row);
+	            return props.column.data(props.row, vido);
 	        return props.row[props.column.data];
 	    }
 	    if (!componentActions.includes(BindElementAction$1))
@@ -8883,11 +8883,25 @@
 	    componentActions.push(BindElementAction$7);
 	    const actions = Actions.create(componentActions, actionProps);
 	    const detach = new Detach(() => shouldDetach);
+	    function getText() {
+	        if (!props.item || !props.item.label)
+	            return null;
+	        if (typeof props.item.label === 'function')
+	            return props.item.label(props.item, vido);
+	        return props.item.label;
+	    }
+	    function getHtml() {
+	        if (!props.item || !props.item.label)
+	            return null;
+	        if (typeof props.item.label === 'function')
+	            return unsafeHTML(props.item.label(props.item, vido));
+	        return unsafeHTML(props.item.label);
+	    }
 	    return (templateProps) => wrapper(html `
         <div detach=${detach} class=${classNameCurrent} data-actions=${actions} style=${styleMap}>
           ${cutterLeft()}${slots.html('before', templateProps)}
           <div class=${labelClassName} title=${props.item.isHTML ? null : props.item.label}>
-            ${slots.html('inside', templateProps)}${props.item.isHTML ? unsafeHTML(props.item.label) : props.item.label}
+            ${slots.html('inside', templateProps)}${props.item.isHTML ? getHtml() : getText()}
           </div>
           ${slots.html('after', templateProps)}${cutterRight()}
         </div>
