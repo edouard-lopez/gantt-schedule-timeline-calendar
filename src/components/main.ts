@@ -547,17 +547,23 @@ export default function Main(vido: Vido, props = {}) {
       ) {
         continue; // prevent infinite loop because we are watching items too
       }
-      multi = multi.update(`config.chart.items.${item.id}.$data`, function ($data: ItemData) {
-        $data.position.left = left;
-        $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
-        $data.position.right = right;
-        $data.position.actualRight = api.time.limitOffsetPxToView(right, time);
-        $data.width = right - left - spacing;
-        $data.actualWidth = $data.position.actualRight - $data.position.actualLeft - spacing;
-        $data.position.actualTop = actualTop;
-        $data.position.viewTop = viewTop;
-        return $data;
-      });
+      multi = multi.update(
+        `config.chart.items.${item.id}.$data`,
+        function ($data: ItemData) {
+          $data.position.left = left;
+          $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
+          $data.position.right = right;
+          $data.position.actualRight = api.time.limitOffsetPxToView(right, time);
+          $data.width = right - left - spacing;
+          $data.actualWidth = $data.position.actualRight - $data.position.actualLeft - spacing;
+          $data.position.actualTop = actualTop;
+          $data.position.viewTop = viewTop;
+          return $data;
+        },
+        {
+          data: { updateVisibleItems: true },
+        }
+      );
     }
     return multi;
   }
@@ -565,10 +571,11 @@ export default function Main(vido: Vido, props = {}) {
   onDestroy(
     state.subscribeAll(
       ['$data.list.visibleRows;', '$data.chart.visibleItems;', 'config.scroll.vertical', 'config.chart.items'],
-      () => {
+      (bulk, eventInfo) => {
+        if (eventInfo.options.data && eventInfo.options.data.updateVisibleItems) return;
         updateVisibleItems().done();
       },
-      { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }
+      { bulk: true, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }
     )
   );
 

@@ -6328,13 +6328,17 @@ function Main(vido, props = {}) {
                 $data.position.actualTop = actualTop;
                 $data.position.viewTop = viewTop;
                 return $data;
+            }, {
+                data: { updateVisibleItems: true },
             });
         }
         return multi;
     }
-    onDestroy(state.subscribeAll(['$data.list.visibleRows;', '$data.chart.visibleItems;', 'config.scroll.vertical', 'config.chart.items'], () => {
+    onDestroy(state.subscribeAll(['$data.list.visibleRows;', '$data.chart.visibleItems;', 'config.scroll.vertical', 'config.chart.items'], (bulk, eventInfo) => {
+        if (eventInfo.options.data && eventInfo.options.data.updateVisibleItems)
+            return;
         updateVisibleItems().done();
-    }, { ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
+    }, { bulk: true, ignore: ['config.chart.items.*.$data.detached', 'config.chart.items.*.selected'] }));
     function recalculateTimes(reason) {
         const chartWidth = state.get('$data.chart.dimensions.width');
         if (!chartWidth) {
