@@ -6316,9 +6316,11 @@ function Main(vido, props = {}) {
                 position.right === right &&
                 position.actualTop === actualTop &&
                 position.viewTop === viewTop) {
-                continue; // prevent infinite loop because we are watching items too
+                continue;
             }
             multi = multi.update(`config.chart.items.${item.id}.$data`, function ($data) {
+                if (!$data)
+                    return;
                 $data.position.left = left;
                 $data.position.actualLeft = api.time.limitOffsetPxToView(left, time);
                 $data.position.right = right;
