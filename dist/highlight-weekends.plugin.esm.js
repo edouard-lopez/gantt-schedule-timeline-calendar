@@ -49,7 +49,10 @@ function Plugin(options = {}) {
         const pluginPath = 'config.plugin.HighlightWeekends';
         api = vidoInstance.api;
         className = options.className || api.getClass('chart-timeline-grid-row-cell') + '--weekend';
-        subs.push(vidoInstance.state.subscribe(pluginPath, (value) => (options = value)));
+        subs.push(vidoInstance.state.subscribe(pluginPath, (value) => {
+            if (value)
+                options = value;
+        }));
         subs.push(vidoInstance.state.subscribe('$data.chart.time.format.period', (period) => (enabled = period === 'day')));
         vidoInstance.state.update('config.actions.chart-timeline-grid-row-cell', (actions) => {
             actions.push(WeekendHighlightAction);
